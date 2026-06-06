@@ -1,0 +1,4 @@
+[Worker] Started (max_workers=2, poll=2.0s)
+[Server] Queue worker started with 2 workers
+[Worker] Stopping...
+[Server] Queue worker stopped
