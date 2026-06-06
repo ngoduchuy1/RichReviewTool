@@ -116,5 +116,8 @@ def export_subtitle(project_id: int, fmt: str = "srt", font: str = "Arial", size
             raise HTTPException(404, "No subtitles found")
     
     style = {"font": font, "size": size, "color": color, "shadow": shadow}
-    out = export_subtitle_file(row["content"], fmt, project_id, style)
-    return {"path": out}
+    try:
+        out = export_subtitle_file(row["content"], fmt, project_id, style)
+        return {"path": out}
+    except Exception as e:
+        raise HTTPException(500, f"Export failed: {e}")

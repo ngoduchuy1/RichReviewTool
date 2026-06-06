@@ -261,16 +261,23 @@ def _full(item_id: int, project_id: int, input_path: str, params: dict) -> bool:
                 _register_asset("videos", video_path, project_id)
     _update(item_id, "running", 20)
 
-    # Step 2: Transcribe
-    _log(item_id, "info", "Step 2/5: Transcribing audio...")
-    if video_path and os.path.exists(video_path):
-        from .ffmpeg_utils import extract_audio
-        from .whisper_stt import transcribe
-        audio_path = extract_audio(video_path)
-        lang = params.get("language", "vi")
-        result = transcribe(audio_path, lang, project_id)
-        srt_path = result.get("srt_path", "")
-        _register_asset("subtitle", srt_path, project_id)
+    # Step 2: Transcribe (skip if SRT already exists for this project)
+    with db_cursor() as cur:
+        has_srt = cur.execute(
+            "SELECT 1 FROM subtitles WHERE project_id=? LIMIT 1", (project_id,)
+        ).fetchone() is not None
+    if has_srt:
+        _log(item_id, "info", "Step 2/5: Skipping transcription (SRT already loaded)")
+    else:
+        _log(item_id, "info", "Step 2/5: Transcribing audio...")
+        if video_path and os.path.exists(video_path):
+            from .ffmpeg_utils import extract_audio
+            from .whisper_stt import transcribe
+            audio_path = extract_audio(video_path)
+            lang = params.get("language", "vi")
+            result = transcribe(audio_path, lang, project_id)
+            srt_path = result.get("srt_path", "")
+            _register_asset("subtitle", srt_path, project_id)
     _update(item_id, "running", 40)
 
     # Step 3: Translate

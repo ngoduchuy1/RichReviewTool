@@ -863,6 +863,31 @@ document.getElementById('btn-log-refresh')?.addEventListener('click', fetchLogs)
 document.getElementById('inp-log-filter')?.addEventListener('change', fetchLogs);
 document.getElementById('sel-log-level')?.addEventListener('change', fetchLogs);
 
+document.getElementById('btn-log-copy')?.addEventListener('click', () => {
+  const text = [...logContainer.querySelectorAll('.log-entry')].map(row => {
+    const src = row.querySelector('.log-source')?.textContent || '';
+    const time = row.querySelector('.log-time')?.textContent || '';
+    const level = row.querySelector('.log-level')?.textContent || '';
+    const msg = row.querySelector('.log-message')?.textContent || '';
+    return `[${src}] [${time}] [${level}] ${msg}`;
+  }).join('\n');
+  if (!text) return;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('btn-log-copy');
+    const orig = btn.innerHTML;
+    btn.innerHTML = '<i class="ri-check-line"></i> Copied';
+    setTimeout(() => btn.innerHTML = orig, 1500);
+  }).catch(() => {
+    // fallback
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  });
+});
+
 /* ═══════════════ FLYOUT LEAF → PANEL WIRING ═══════════════ */
 const navToTabMap = {
   subtitle: 'tab-subtitle',
@@ -1385,6 +1410,41 @@ document.getElementById('btn-sub-trans-gemini')?.addEventListener('click', async
   }
 });
 
+/* ─── Translation Result Modal ─── */
+const transResultModal = document.getElementById('trans-result-modal');
+const transResultText = document.getElementById('trans-result-text');
+const transResultInfo = document.getElementById('trans-result-info');
+
+function showTransResult(text, filename) {
+  if (transResultText) transResultText.value = text;
+  if (transResultInfo) transResultInfo.textContent = `NLLB-200 — ${filename || 'subtitle.srt'} (${(text||'').split('\n').length} dòng)`;
+  transResultModal?.classList.add('show');
+}
+
+document.getElementById('btn-trans-copy')?.addEventListener('click', () => {
+  if (!transResultText?.value) return;
+  navigator.clipboard.writeText(transResultText.value).then(() => {
+    const btn = document.getElementById('btn-trans-copy');
+    const orig = btn.innerHTML;
+    btn.innerHTML = '<i class="ri-check-line"></i> Copied';
+    setTimeout(() => btn.innerHTML = orig, 1500);
+  });
+});
+
+document.getElementById('btn-trans-download')?.addEventListener('click', () => {
+  const text = transResultText?.value;
+  if (!text) return;
+  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'translated_nllb.srt';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+
 document.getElementById('btn-sub-trans-nllb')?.addEventListener('click', async () => {
   const btn = document.getElementById('btn-sub-trans-nllb');
   const srtPath = document.getElementById('inp-srt-path')?.value?.trim();
@@ -1470,9 +1530,21 @@ document.getElementById('btn-sub-trans-nllb')?.addEventListener('click', async (
 
           if (prog?.status === 'done') {
             clearInterval(poll);
-            const snippet = (prog.translated || '').replace(/\n/g,' ').substring(0, 40);
-            if (sd) sd.textContent = `${toLang}: ${snippet}...`;
+            const translated = prog.translated || '';
+            const snippet = translated.replace(/\n/g,' ').substring(0, 40);
+            if (sd) {
+              sd.textContent = `${toLang}: ${snippet}...`;
+              // Click to view full result
+              sd.style.cursor = 'pointer';
+              sd.style.color = '#60a5fa';
+              sd.title = 'Click để xem kết quả dịch đầy đủ';
+              sd.onclick = () => showTransResult(translated, srtName);
+            }
             if (fill) fill.style.width = '100%';
+            // Check if result contains error placeholder
+            if (/\[NLLB unavailable/i.test(translated) || /\[NLLB error/i.test(translated)) {
+              setTimeout(() => alert('NLLB không khả dụng trong bản EXE.\nDùng GPT hoặc Gemini, hoặc chạy từ source.'), 100);
+            }
             resolve();
           } else if (prog?.status === 'error') {
             clearInterval(poll);
@@ -1536,7 +1608,19 @@ document.getElementById('btn-sub-export-ass')?.addEventListener('click', async (
 });
 
 document.getElementById('btn-sub-export-burn')?.addEventListener('click', async () => {
-  const r = await apiPost('/subtitle/export?project_id=' + (currentProjectId || 1) + '&fmt=ass');
+  const r = await apiPost('/pipeline/start', {
+    project_id: currentProjectId || 1,
+    input_path: document.getElementById('inp-video-path')?.value || '',
+    type: 'pipeline',
+    params: {
+      source_lang: 'vi', target_lang: 'vi',
+      translate_engine: 'gpt',
+      tts_provider: 'edge',
+      tts_voice: 'vi-VN-NamMinhNeural',
+      burn_subtitle: true,
+      tts_enabled: false,
+    },
+  });
   if (r) addTaskRow();
 });
 

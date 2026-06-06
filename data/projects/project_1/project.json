@@ -1,0 +1,65 @@
+{
+  "id": 1,
+  "name": "project_1780755131066",
+  "preset": "Movie Review",
+  "resolution": "1920x1080",
+  "fps": 30,
+  "created_at": "2026-06-06 21:12:11",
+  "updated_at": "2026-06-06 21:12:11",
+  "preset_config": {
+    "name": "Movie Review",
+    "description": "Review phim 16:9 full HD",
+    "voice": {
+      "provider": "edge",
+      "voice": "vi-VN-NamMinhNeural",
+      "speed": 1.0,
+      "keep_bgm": true,
+      "bgm_volume": 0.1
+    },
+    "subtitle": {
+      "font": "Arial",
+      "size": 42,
+      "color": "#FFFFFF",
+      "stroke": 2,
+      "shadow": "soft",
+      "position": "bottom",
+      "burn": true
+    },
+    "export": {
+      "resolution": "1920x1080",
+      "fps": 30,
+      "codec": "h264",
+      "bitrate": "8M",
+      "audio_bitrate": "192k",
+      "format": "mp4",
+      "gpu": "cpu"
+    },
+    "enhance": {
+      "lut": "Cinematic",
+      "brightness": 50,
+      "contrast": 55,
+      "saturation": 60,
+      "vignette": 12,
+      "watermark": true
+    }
+  },
+  "tracks": [
+    {
+      "type": "video",
+      "count": 1
+    },
+    {
+      "type": "subtitle",
+      "count": 1
+    },
+    {
+      "type": "voice",
+      "count": 1
+    },
+    {
+      "type": "music",
+      "count": 1
+    }
+  ],
+  "version": 1
+}

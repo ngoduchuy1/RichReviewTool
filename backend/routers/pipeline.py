@@ -37,7 +37,20 @@ def start_pipeline(data: dict):
     if not project_id:
         raise HTTPException(400, "project_id is required")
 
-    item_id = add_queue_item(project_id, ptype, input_path, params, priority=1)
+    # Ensure project exists (auto-create if missing)
+    from ..database import db_cursor
+    with db_cursor() as cur:
+        exists = cur.execute("SELECT 1 FROM projects WHERE id=?", (project_id,)).fetchone()
+    if not exists:
+        from ..services.project_service import create_project
+        create_project(f"project_{project_id}", preset="Movie Review")
+        print(f"[Pipeline] Auto-created project {project_id}")
+
+    try:
+        item_id = add_queue_item(project_id, ptype, input_path, params, priority=1)
+    except Exception as e:
+        raise HTTPException(500, f"Failed to queue pipeline: {e}")
+
     return {"id": item_id, "message": f"Pipeline '{ptype}' queued"}
 
 

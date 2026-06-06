@@ -772,11 +772,32 @@
             <option value="error">Error</option>
             <option value="warn">Warning</option>
           </select>
+          <button class="action-btn" id="btn-log-copy" style="height:20px;padding:1px 8px;font-size:9px"><i class="ri-file-copy-line"></i> Copy</button>
           <span class="field-label ml-auto" id="log-count">0 logs</span>
         </div>
         <div class="log-container" id="log-container">
           <div class="log-placeholder">No logs yet. Run a job to see logs here.</div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TRANSLATION RESULT MODAL -->
+  <div class="modal-overlay" id="trans-result-modal">
+    <div class="modal-content" style="width:650px;max-height:80vh">
+      <div class="modal-header">
+        <h3><i class="ri-translate-2"></i> Kết Quả Dịch</h3>
+        <div style="display:flex;gap:6px;align-items:center">
+          <button class="action-btn" id="btn-trans-copy" style="height:20px;padding:1px 8px;font-size:9px"><i class="ri-file-copy-line"></i> Copy</button>
+          <button class="icon-btn close-modal"><i class="ri-close-line"></i></button>
+        </div>
+      </div>
+      <div class="modal-body" style="padding:8px;overflow:hidden;display:flex;flex-direction:column;gap:6px;max-height:calc(80vh - 50px)">
+        <div class="panel-row">
+          <span class="field-label" id="trans-result-info">NLLB-200</span>
+          <button class="action-btn" id="btn-trans-download" style="height:20px;padding:1px 8px;font-size:9px;margin-left:auto"><i class="ri-download-2-line"></i> Tải SRT</button>
+        </div>
+        <textarea class="text-input" id="trans-result-text" readonly style="width:100%;flex:1;min-height:200px;resize:vertical;font-family:var(--font-mono);font-size:11px"></textarea>
       </div>
     </div>
   </div>
