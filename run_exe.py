@@ -22,11 +22,27 @@ if getattr(sys, 'frozen', False):
     except Exception:
         pass
 
+def kill_port(port):
+    try:
+        import subprocess
+        result = subprocess.run(f'netstat -ano | findstr :{port}', shell=True, capture_output=True, text=True)
+        for line in result.stdout.strip().splitlines():
+            parts = line.split()
+            if parts and parts[-1].isdigit():
+                pid = int(parts[-1])
+                if pid == os.getpid() or pid == 0:
+                    continue
+                subprocess.run(f'taskkill /PID {pid} /F', shell=True, capture_output=True)
+    except Exception:
+        pass
+
 # 1. Start FastAPI server in a background thread
 def run_server():
     # Make sure we are in the correct directory
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    
+    kill_port(7860)
     
     from backend.main import app
     import uvicorn

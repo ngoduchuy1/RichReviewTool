@@ -480,7 +480,7 @@ executeBtn.addEventListener('click', async () => {
     tts_provider: document.getElementById('sel-tts-provider')?.value?.toLowerCase().replace(' tts', '').replace(' (free)', '') || 'edge',
     tts_voice: document.getElementById('sel-voice-type')?.value === 'Nam' ? 'vi-VN-NamMinhNeural' : 'vi-VN-HoaiMyNeural',
     burn_subtitle: document.querySelector('#tab-subtitle .custom-checkbox input')?.checked || true,
-    output_name: Path ? Path(outPath).stem : 'output',
+    output_name: outPath.split(/[\\/]/).pop().replace(/\.[^.]+$/, '') || 'output',
     preset: document.getElementById('sel-project-preset')?.value || 'Movie Review',
   };
 
