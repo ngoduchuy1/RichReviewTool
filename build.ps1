@@ -72,6 +72,6 @@ if (Test-Path $distPath) {
         Start-Process "explorer.exe" (Split-Path $distPath)
     }
 } else {
-    Write-Host "[LOI] Khong tim thay file exe sau khi build!" -ForegroundColor Red
+    Write-Host "[LOI] Khong tim thay file exe sau khi build" -ForegroundColor Red
     exit 1
 }

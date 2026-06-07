@@ -35,8 +35,19 @@ from .routers import (
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    from .config import DB_PATH
+    print(f"[Server] Database path: {DB_PATH}")
+    print(f"[Server] Database exists: {DB_PATH.exists()}")
+    
+    # Delete database file to clear all stale data
+    if DB_PATH.exists():
+        import os
+        os.remove(DB_PATH)
+        print(f"[Server] Deleted old database file: {DB_PATH}")
+    
     init_db()
     init_presets()
+    
     worker = get_worker()
     worker.max_workers = MAX_QUEUE_WORKERS
     worker.start()

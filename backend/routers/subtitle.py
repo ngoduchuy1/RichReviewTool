@@ -37,6 +37,28 @@ async def import_subtitle(project_id: int = 0, file: UploadFile = File(...)):
     return {"id": sid, "path": str(sub_path)}
 
 
+@router.post("/import-path")
+async def import_subtitle_path(data: dict):
+    """Import subtitle by file path — more reliable than UploadFile for local paths."""
+    import os
+    file_path = data.get("path", "")
+    project_id = data.get("project_id", 0)
+    if not file_path or not os.path.exists(file_path):
+        raise HTTPException(400, f"File not found: {file_path}")
+    filename = os.path.basename(file_path)
+    with open(file_path, "r", encoding="utf-8", errors="replace") as f:
+        text = f.read()
+    sub_path = SUBTITLES_DIR / f"sub_{project_id}_{filename}"
+    sub_path.write_text(text, encoding="utf-8")
+    with db_cursor() as cur:
+        cur.execute(
+            "INSERT INTO subtitles (project_id, source, content) VALUES (?,?,?)",
+            (project_id, filename, text),
+        )
+        sid = cur.lastrowid
+    return {"id": sid, "path": str(sub_path)}
+
+
 @router.get("/{project_id}")
 def get_subtitles(project_id: int):
     with db_cursor() as cur:

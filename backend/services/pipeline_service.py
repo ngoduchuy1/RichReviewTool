@@ -184,7 +184,11 @@ def _render(item_id: int, project_id: int, video_path: str, params: dict) -> boo
         raise FileNotFoundError(f"Video not found: {video_path}")
 
     output_name = params.get("output_name", f"output_{project_id}")
-    export_dir = EXPORTS_DIR / f"project_{project_id}"
+    output_dir = params.get("output_dir")
+    if output_dir and len(output_dir.strip(" .:\\/")) > 0 and output_dir != "........":
+        export_dir = Path(output_dir)
+    else:
+        export_dir = EXPORTS_DIR / f"project_{project_id}"
     export_dir.mkdir(parents=True, exist_ok=True)
     final_output = str(export_dir / f"{output_name}.mp4")
 
@@ -192,7 +196,6 @@ def _render(item_id: int, project_id: int, video_path: str, params: dict) -> boo
 
     # Step 1: Burn subtitles if available
     burn = params.get("burn_subtitle", True)
-    srt_path = None
     if burn:
         with db_cursor() as cur:
             row = cur.execute(
@@ -219,13 +222,18 @@ def _render(item_id: int, project_id: int, video_path: str, params: dict) -> boo
     else:
         _log(item_id, "info", "No TTS found, copying audio as-is")
 
-    # Step 3: Apply effects (scale, codec, bitrate)
+    # Step 3: Apply effects (scale, codec, bitrate) — use temp file to avoid same-file conflict
     _log(item_id, "info", "Applying encode settings...")
     from .ffmpeg_utils import render_video
-    render_video(video_path, final_output, params)
+    encoded_tmp = final_output.replace(".mp4", "_encoded.mp4")
+    if not render_video(video_path, encoded_tmp, params):
+        raise RuntimeError(f"FFmpeg render_video failed for {video_path}")
+    if not os.path.exists(encoded_tmp):
+        raise RuntimeError(f"render_video output not created: {encoded_tmp}")
+    os.replace(encoded_tmp, final_output)
     _update(item_id, "running", 90)
 
-    file_size = os.path.getsize(final_output) if os.path.exists(final_output) else 0
+    file_size = os.path.getsize(final_output)
     with db_cursor() as cur:
         cur.execute(
             "INSERT INTO exports (project_id, input_path, output_path, format, file_size, status) VALUES (?,?,?,?,?,?)",
@@ -283,6 +291,7 @@ def _full(item_id: int, project_id: int, input_path: str, params: dict) -> bool:
     # Step 3: Translate
     src = params.get("source_lang", "vi")
     tgt = params.get("target_lang", "vi")
+    _log(item_id, "info", f"Step 3 debug: params={json.dumps(params)}, src={src}, tgt={tgt}")
     if src != tgt:
         _log(item_id, "info", f"Step 3/5: Translating {src}→{tgt}...")
         _translate(item_id, project_id, params)

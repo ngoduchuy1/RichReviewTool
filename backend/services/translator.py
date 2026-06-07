@@ -5,6 +5,15 @@ from ..database import db_cursor
 import requests
 
 
+_TRANSLATION_ERROR_PREFIXES = ("[GPT error:", "[Gemini error:", "[NLLB error:", "[NLLB unavailable",
+                              "[MarianMT error:", "[MarianMT unavailable", "[Translation error:",
+                              "[GPT translation unavailable", "[Gemini translation unavailable")
+
+
+def _is_translation_error(result: str) -> bool:
+    return result.startswith(_TRANSLATION_ERROR_PREFIXES)
+
+
 def translate_text(text: str, source_lang: str = "zh", target_lang: str = "vi", engine: str = "gpt") -> str:
     if engine == "gpt":
         return _translate_gpt(text, source_lang, target_lang)
@@ -42,7 +51,10 @@ def translate_srt(srt_content: str, source_lang: str = "zh", target_lang: str = 
     job_id = str(uuid.uuid4())
     _job_set(job_id, status="running", progress=0, result=None, error=None)
     _translate_srt_sync(job_id, srt_content, source_lang, target_lang, engine)
-    return _JOBS[job_id].get("result") or ""
+    job = _JOBS.get(job_id, {})
+    if job.get("status") == "error":
+        raise RuntimeError(job.get("error", "Translation failed"))
+    return job.get("result") or ""
 
 
 def translate_srt_async(srt_content: str, source_lang: str = "zh", target_lang: str = "vi", engine: str = "gpt", project_id=None) -> str:
@@ -94,10 +106,11 @@ def _translate_srt_sync(job_id: str, srt_content: str, source_lang: str, target_
             for start in range(0, total, BATCH):
                 chunk = text_blocks[start:start + BATCH]
                 texts = [blk[2] for blk in chunk]
-                # Translate batch as multi-line (the model handles newline sep well)
                 joined = "\n".join(t for t in texts if t)
                 if joined.strip():
                     translated_joined = translate_text(joined, source_lang, target_lang, engine)
+                    if _is_translation_error(translated_joined):
+                        raise RuntimeError(translated_joined)
                     parts = translated_joined.split("\n")
                     if len(parts) < len(chunk):
                         parts += [""] * (len(chunk) - len(parts))
@@ -113,6 +126,8 @@ def _translate_srt_sync(job_id: str, srt_content: str, source_lang: str, target_
         else:
             for n, (idx, time_line, text) in enumerate(text_blocks):
                 translated = translate_text(text, source_lang, target_lang, engine) if text else ""
+                if _is_translation_error(translated):
+                    raise RuntimeError(translated)
                 result_blocks.append(f"{idx}\n{time_line}\n{translated}\n")
                 _job_set(job_id, progress=int((n + 1) / total * 100))
 

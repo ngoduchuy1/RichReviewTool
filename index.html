@@ -214,9 +214,9 @@
                 <a href="#" class="link-accent" id="link-setup-voice">THIẾT LẬP</a>
                 <label class="field-label ml8">Nhà Cung Cấp:</label>
                 <select class="select-input" id="sel-tts-provider" style="width:150px">
+                  <option>Edge TTS</option>
                   <option>Google TTS (free)</option>
                   <option>Azure TTS</option>
-                  <option>ElevenLabs</option>
                 </select>
                 <button class="info-btn">?</button>
               </div>
@@ -544,6 +544,7 @@
                 <button class="action-btn" id="btn-publish-youtube"><i class="ri-youtube-line"></i> YouTube</button>
                 <button class="action-btn" id="btn-publish-tiktok"><i class="ri-tiktok-line"></i> TikTok</button>
                 <button class="action-btn" id="btn-publish-facebook"><i class="ri-facebook-line"></i> Facebook</button>
+                <button class="action-btn" id="btn-publish-history" style="background:#6366f1;color:#fff;border:none;margin-top:4px"><i class="ri-history-line"></i> Lịch sử</button>
               </div>
               <div class="panel-row mt4" id="publish-inputs" style="display:none;gap:4px">
                 <input type="text" class="text-input flex1" id="inp-publish-title" placeholder="Video title..." style="height:22px;font-size:10px" />
@@ -556,7 +557,7 @@
             <div class="panel-divider"></div>
             <div class="panel-row mt4">
               <label class="field-label" style="white-space:nowrap">File Lưu Kết Quả:</label>
-              <input type="text" class="text-input flex1" id="inp-output-path" value="........" />
+              <input type="text" class="text-input flex1" id="inp-output-path" placeholder="Đường dẫn xuất video (mặc định: data/exports)" />
               <button class="icon-btn" id="btn-browse-output" title="Chọn thư mục"><i class="ri-folder-open-line"></i></button>
             </div>
             <div class="panel-row mt6">
@@ -724,6 +725,14 @@
         <div class="panel-row mt4" style="justify-content: flex-end;">
           <button class="action-btn" id="btn-batch-download"><i class="ri-play-list-line"></i> Tải Batch</button>
         </div>
+        <div class="panel-divider"></div>
+        <div class="section-label" style="margin-top:4px">Lịch sử Download</div>
+        <div class="panel-row" style="margin-bottom:4px">
+          <button class="action-btn" id="btn-dl-history-refresh" style="height:22px;padding:1px 8px;font-size:9px"><i class="ri-refresh-line"></i> Làm mới</button>
+        </div>
+        <div id="download-history-list" style="max-height:120px;overflow-y:auto;font-size:10px">
+          <div class="log-placeholder">Chưa có download nào.</div>
+        </div>
       </div>
     </div>
   </div>
@@ -817,6 +826,58 @@
           <span class="col-hdr" style="width:60px">Action</span>
         </div>
         <div id="version-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TEMPLATE MANAGEMENT MODAL -->
+  <div class="modal-overlay" id="template-modal">
+    <div class="modal-content" style="width:600px;max-height:80vh">
+      <div class="modal-header">
+        <h3><i class="ri-layout-grid-line"></i> Quản lý Template</h3>
+        <button class="icon-btn close-modal"><i class="ri-close-line"></i></button>
+      </div>
+      <div class="modal-body" style="padding:8px;overflow:hidden;display:flex;flex-direction:column;gap:6px;max-height:calc(80vh - 50px)">
+        <div class="panel-row">
+          <input type="text" class="text-input flex1" id="inp-template-name" placeholder="Tên template..." style="height:22px;font-size:10px" />
+          <button class="action-btn" id="btn-template-save" style="height:22px;padding:1px 8px;font-size:9px"><i class="ri-save-3-line"></i> Lưu</button>
+          <button class="action-btn" id="btn-template-refresh" style="height:22px;padding:1px 8px;font-size:9px"><i class="ri-refresh-line"></i> Làm mới</button>
+        </div>
+        <div class="result-table-header" style="padding:3px 6px;font-size:9px">
+          <span class="col-hdr" style="flex:2">Name</span>
+          <span class="col-hdr" style="flex:1">Preset</span>
+          <span class="col-hdr" style="width:60px">Res</span>
+          <span class="col-hdr" style="width:40px">FPS</span>
+          <span class="col-hdr" style="width:100px">Actions</span>
+        </div>
+        <div id="template-list" style="flex:1;overflow-y:auto;min-height:100px">
+          <div class="log-placeholder">No templates yet.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PUBLISH HISTORY MODAL -->
+  <div class="modal-overlay" id="publish-history-modal">
+    <div class="modal-content" style="width:650px;max-height:80vh">
+      <div class="modal-header">
+        <h3><i class="ri-history-line"></i> Lịch sử Publish</h3>
+        <button class="icon-btn close-modal"><i class="ri-close-line"></i></button>
+      </div>
+      <div class="modal-body" style="padding:8px;overflow:hidden;display:flex;flex-direction:column;gap:6px;max-height:calc(80vh - 50px)">
+        <div class="panel-row">
+          <button class="action-btn" id="btn-pub-history-refresh" style="height:22px;padding:1px 8px;font-size:9px"><i class="ri-refresh-line"></i> Làm mới</button>
+          <span class="field-label ml-auto" id="pub-history-count">0 items</span>
+        </div>
+        <div class="result-table-header" style="padding:3px 6px;font-size:9px">
+          <span class="col-hdr" style="flex:2">Title</span>
+          <span class="col-hdr" style="flex:1">Platform</span>
+          <span class="col-hdr" style="width:70px">Status</span>
+          <span class="col-hdr" style="width:120px">Date</span>
+        </div>
+        <div id="publish-history-list" style="flex:1;overflow-y:auto;min-height:100px">
+          <div class="log-placeholder">Chưa có lịch sử publish.</div>
+        </div>
       </div>
     </div>
   </div>

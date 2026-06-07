@@ -9,7 +9,10 @@ def add_queue_item(project_id: int, item_type: str, input_path: str, params: dic
             "INSERT INTO queue_items (project_id, type, status, input_path, params, priority) VALUES (?,?,?,?,?,?)",
             (project_id, item_type, "waiting", input_path, json.dumps(params or {}), priority),
         )
-        return cur.lastrowid
+        item_id = cur.lastrowid
+    from .event_bus import event_bus
+    event_bus.publish("queue_changed")
+    return item_id
 
 
 def update_item_status(item_id: int, status: str, progress: float = None, error: str = None):
@@ -28,6 +31,8 @@ def update_item_status(item_id: int, status: str, progress: float = None, error:
             f"UPDATE queue_items SET {', '.join(fields)}, updated_at=? WHERE id=?",
             vals,
         )
+    from .event_bus import event_bus
+    event_bus.publish("queue_changed")
 
 
 def retry_failed(item_id: int = None):
@@ -36,18 +41,26 @@ def retry_failed(item_id: int = None):
             cur.execute("UPDATE queue_items SET status='waiting', error=NULL WHERE id=? AND status='failed'", (item_id,))
         else:
             cur.execute("UPDATE queue_items SET status='waiting', error=NULL WHERE status='failed'")
+    from .event_bus import event_bus
+    event_bus.publish("queue_changed")
 
 
 def pause_all() -> int:
     with db_cursor() as cur:
         cur.execute("UPDATE queue_items SET status='paused' WHERE status='running' OR status='waiting'")
-        return cur.rowcount
+        count = cur.rowcount
+    from .event_bus import event_bus
+    event_bus.publish("queue_changed")
+    return count
 
 
 def resume_all() -> int:
     with db_cursor() as cur:
         cur.execute("UPDATE queue_items SET status='waiting' WHERE status='paused'")
-        return cur.rowcount
+        count = cur.rowcount
+    from .event_bus import event_bus
+    event_bus.publish("queue_changed")
+    return count
 
 
 def get_queue(status: str = None) -> list:
@@ -61,4 +74,7 @@ def get_queue(status: str = None) -> list:
 
 def clear_all():
     with db_cursor() as cur:
+        cur.execute("DELETE FROM job_logs")
         cur.execute("DELETE FROM queue_items")
+    from .event_bus import event_bus
+    event_bus.publish("queue_changed")

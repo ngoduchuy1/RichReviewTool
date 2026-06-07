@@ -1,17 +1,21 @@
 import sys
 import os
 
-# Allow frozen app to load system-installed libraries (like torch, transformers, etc.)
-site_packages = r"C:\Program Files\Python312\Lib\site-packages"
-if os.path.exists(site_packages) and site_packages not in sys.path:
-    sys.path.append(site_packages)
+_site_candidates = [
+    os.path.join(os.path.dirname(sys.executable), "Lib", "site-packages"),
+    os.path.join(os.path.dirname(sys.prefix), "Lib", "site-packages"),
+    r"C:\Program Files\Python312\Lib\site-packages",
+    r"C:\Users\Administrator\AppData\Local\Programs\Python\Python312\Lib\site-packages",
+]
+for sp in _site_candidates:
+    if os.path.exists(sp) and sp not in sys.path:
+        sys.path.append(sp)
 
 import threading
 import time
 import socket
 import webview
 
-# Redirect stdout and stderr to a log file next to the executable when frozen
 if getattr(sys, 'frozen', False):
     exe_dir = os.path.dirname(sys.executable)
     log_path = os.path.join(exe_dir, "app_log.txt")
@@ -36,38 +40,42 @@ def kill_port(port):
     except Exception:
         pass
 
-# 1. Start FastAPI server in a background thread
-def run_server():
-    # Make sure we are in the correct directory
-    os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-    
-    kill_port(7860)
-    
-    from backend.main import app
-    import uvicorn
-    # Run server
-    uvicorn.run(app, host="127.0.0.1", port=7860, log_level="warning")
+_server_port = [7860]
 
-server_thread = threading.Thread(target=run_server, daemon=True)
-server_thread.start()
-
-# 2. Function to wait for port to be ready
 def is_port_open(port):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         return s.connect_ex(('127.0.0.1', port)) == 0
 
-# Wait for server to start up
-for _ in range(50):
-    if is_port_open(7860):
+def run_server():
+    global _server_port
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from backend.main import app
+    import uvicorn
+    for port in range(7860, 7865):
+        kill_port(port)
+        time.sleep(0.3)
+        if not is_port_open(port):
+            _server_port[0] = port
+            print(f"[run_exe] Starting on 127.0.0.1:{port}")
+            uvicorn.run(app, host="127.0.0.1", port=port, log_level="warning")
+            return
+        print(f"[run_exe] Port {port} still in use after kill")
+    print("[run_exe] No free port found 7860-7864. Exiting.")
+    sys.exit(1)
+
+server_thread = threading.Thread(target=run_server, daemon=True)
+server_thread.start()
+
+for _ in range(100):
+    if is_port_open(_server_port[0]):
         break
     time.sleep(0.1)
 
-# 3. Start PyWebView Application
 def main():
     webview.create_window(
         title="RichReviewTool V2.0.0",
-        url="http://127.0.0.1:7860/",
+        url=f"http://127.0.0.1:{_server_port[0]}/",
         width=1400,
         height=900,
         resizable=True

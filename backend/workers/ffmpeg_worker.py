@@ -36,6 +36,32 @@ class QueueWorker:
     def is_alive(self) -> bool:
         return self._running and (self._thread is not None and self._thread.is_alive())
 
+    def _claim_one(self):
+        """Atomically claim one waiting queue item using BEGIN IMMEDIATE.
+        Returns the row as sqlite3.Row, or None if no item available."""
+        try:
+            from ..database import get_conn
+            conn = get_conn()
+            cur = conn.cursor()
+            cur.execute("BEGIN IMMEDIATE")
+            row = cur.execute(
+                "SELECT * FROM queue_items WHERE status='waiting' ORDER BY priority DESC, created_at LIMIT 1"
+            ).fetchone()
+            if row:
+                cur.execute(
+                    "UPDATE queue_items SET status='running', updated_at=datetime('now','localtime') WHERE id=?",
+                    (row["id"],),
+                )
+            conn.commit()
+            return row
+        except Exception as e:
+            print(f"[Worker] _claim_one error: {e}")
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+            return None
+
     def _run(self):
         while self._running:
             try:
@@ -43,17 +69,13 @@ class QueueWorker:
                     time.sleep(1)
                     continue
 
-                with db_cursor() as cur:
-                    row = cur.execute(
-                        "SELECT * FROM queue_items WHERE status='waiting' ORDER BY priority DESC, created_at LIMIT 1"
-                    ).fetchone()
-
-                if row is None:
+                item = self._claim_one()
+                if item is None:
                     time.sleep(self.poll_interval)
                     continue
 
-                item = dict(row)
                 self._active_count += 1
+                item_copy = dict(item)
 
                 def process(item_copy):
                     try:
@@ -71,7 +93,7 @@ class QueueWorker:
                     finally:
                         self._active_count -= 1
 
-                t = threading.Thread(target=process, args=(item,), daemon=True, name=f"worker-{item['id']}")
+                t = threading.Thread(target=process, args=(item_copy,), daemon=True, name=f"worker-{item_copy['id']}")
                 t.start()
 
             except Exception as e:

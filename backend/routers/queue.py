@@ -1,8 +1,43 @@
-from fastapi import APIRouter, HTTPException
+import asyncio
+import json
+import queue as qmod
+from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import StreamingResponse
 from ..services.queue_manager import get_queue, add_queue_item, update_item_status, retry_failed, pause_all, resume_all, clear_all
+from ..services.event_bus import event_bus
 from ..database import db_cursor
 
 router = APIRouter()
+
+
+@router.get("/events")
+async def queue_events(request: Request):
+    q = event_bus.register()
+    try:
+        async def generate():
+            try:
+                yield "data: {\"type\":\"connected\"}\n\n"
+                while True:
+                    if await request.is_disconnected():
+                        break
+                    try:
+                        await asyncio.to_thread(q.get, timeout=5)
+                        with db_cursor() as cur:
+                            rows = cur.execute("SELECT * FROM queue_items ORDER BY priority DESC, created_at").fetchall()
+                        queue_data = [dict(r) for r in rows]
+                        yield f"data: {json.dumps({'type': 'queue_changed', 'data': queue_data})}\n\n"
+                    except qmod.Empty:
+                        yield ": heartbeat\n\n"
+            finally:
+                event_bus.unregister(q)
+        return StreamingResponse(generate(), media_type="text/event-stream", headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        })
+    except Exception:
+        event_bus.unregister(q)
+        raise
 
 
 @router.post("/clear-all")

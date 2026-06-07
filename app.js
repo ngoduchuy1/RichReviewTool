@@ -3,6 +3,51 @@
 /* ─── API Layer ─── */
 const API_BASE = window.location.origin + '/api';
 
+/* ─── Toast notification system ─── */
+function showToast(message, type = 'error', duration = 4000) {
+  try {
+    const existing = document.getElementById('toast-container');
+    let container = existing;
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'toast-container';
+      container.style.cssText = 'position:fixed;top:56px;right:16px;z-index:99999;pointer-events:none;display:flex;flex-direction:column;gap:8px;max-width:380px';
+      document.body.appendChild(container);
+    }
+    const bg = type === 'error' ? '#ef4444' : type === 'success' ? '#22c55e' : type === 'warn' ? '#f59e0b' : '#3b82f6';
+    const toast = document.createElement('div');
+    toast.style.cssText = `pointer-events:auto;background:${bg};color:#fff;padding:10px 16px;border-radius:6px;font-size:12px;box-shadow:0 4px 12px rgba(0,0,0,0.3);animation:slideIn 0.3s ease;cursor:pointer;word-break:break-word`;
+    toast.textContent = message;
+    toast.onclick = () => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); };
+    container.appendChild(toast);
+    setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, duration);
+  } catch (_) {}
+}
+
+let latestQueueData = null;
+let queueListeners = [];
+
+function onQueueChange(fn) {
+  queueListeners.push(fn);
+}
+
+function connectQueueSSE() {
+  const es = new EventSource(API_BASE + '/queue/events');
+  es.onmessage = function (e) {
+    try {
+      const msg = JSON.parse(e.data);
+      if (msg.type === 'queue_changed') {
+        latestQueueData = msg.data || [];
+        queueListeners.forEach(fn => fn(latestQueueData));
+      }
+    } catch (_) {}
+  };
+  es.onerror = function () {
+    setTimeout(connectQueueSSE, 3000);
+  };
+}
+connectQueueSSE();
+
 /* ─── Client-side error log ─── */
 const clientLogs = [];
 const MAX_CLIENT_LOGS = 200;
@@ -41,12 +86,16 @@ async function api(method, path, body = null) {
   if (body) opts.body = JSON.stringify(body);
   try {
     const res = await fetch(API_BASE + path, opts);
-    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+    if (!res.ok) {
+      const errBody = await res.text().catch(() => '');
+      throw new Error(`${res.status}${errBody ? ': ' + errBody.slice(0, 200) : ''}`);
+    }
     return await res.json();
   } catch (e) {
     const msg = `API ${method} ${path} failed: ${e.message}`;
     console.warn(msg);
     addClientLog('error', msg, e.stack);
+    showToast(msg, 'error', 5000);
     return null;
   }
 }
@@ -96,22 +145,33 @@ async function loadDashboard() {
         const currentVal = sel.value;
         sel.innerHTML = names.map(n => `<option>${presets[n].name || n}</option>`).join('');
         if ([...sel.options].some(o => o.value === currentVal)) sel.value = currentVal;
-      });
-    }
+    });
+  };
   }
 }
 
 /* Tab switching – Processing Panel */
-document.querySelectorAll('#processing-tabs .tab').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('#processing-tabs .tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-    btn.classList.add('active');
-    const target = btn.dataset.target;
-    const el = document.getElementById(target);
-    if (el) el.classList.add('active');
+(function() {
+  var tabs = document.querySelectorAll('#processing-tabs .tab');
+  var contents = document.querySelectorAll('.tab-content');
+  function switchTab(btn) {
+    try {
+      tabs.forEach(function(t) { t.classList.remove('active'); });
+      contents.forEach(function(c) { c.classList.remove('active'); });
+      btn.classList.add('active');
+      var target = btn.dataset.target;
+      if (target) {
+        var el = document.getElementById(target);
+        if (el) el.classList.add('active');
+      }
+    } catch (e) { console.warn('Tab switch error:', e); }
+  }
+  tabs.forEach(function(btn) {
+    btn.addEventListener('click', function() { switchTab(btn); });
   });
-});
+  // Expose for nav click simulation
+  window._switchTab = switchTab;
+})();
 
 
 
@@ -401,7 +461,9 @@ document.querySelectorAll('.live-range').forEach(range => {
 let currentProjectId = null;
 
 document.getElementById('btn-browse-video')?.addEventListener('click', async () => {
+  console.log('[Browse] btn-browse-video clicked');
   const res = await apiGet('/system/browse?type=file&ext=video');
+  console.log('[Browse] response:', res);
   if (res && res.path) {
     document.getElementById('inp-video-path').value = res.path;
     loadVideoPreview();
@@ -409,51 +471,58 @@ document.getElementById('btn-browse-video')?.addEventListener('click', async () 
 });
 
 document.getElementById('btn-browse-srt')?.addEventListener('click', async () => {
+  console.log('[Browse] btn-browse-srt clicked');
   const res = await apiGet('/system/browse?type=file&ext=srt');
+  console.log('[Browse] response:', res);
   if (res && res.path) {
     document.getElementById('inp-srt-path').value = res.path;
   }
 });
 
 document.getElementById('btn-browse-output')?.addEventListener('click', async () => {
+  console.log('[Browse] btn-browse-output clicked');
   const res = await apiGet('/system/browse?type=folder');
+  console.log('[Browse] response:', res);
   if (res && res.path) {
     document.getElementById('inp-output-path').value = res.path;
   }
 });
 
-document.getElementById('btn-load').addEventListener('click', async () => {
-  const srtPath = document.getElementById('inp-srt-path').value;
+document.getElementById('btn-load')?.addEventListener('click', async () => {
+  const srtPath = document.getElementById('inp-srt-path')?.value;
   if (!srtPath) return;
 
   const loadProgress = document.getElementById('load-progress');
   const loadPct = document.getElementById('load-pct');
-  loadProgress.style.width = '10%';
-  loadPct.textContent = '10%';
+  if (loadProgress) loadProgress.style.width = '10%';
+  if (loadPct) loadPct.textContent = '10%';
 
   const project = await apiPost('/projects', {
     name: 'project_' + Date.now(),
     preset: document.getElementById('sel-project-preset')?.value || 'Movie Review',
   });
-  if (project) currentProjectId = project.id;
+  if (project) {
+    currentProjectId = project.id;
+    setTimeout(() => loadTimeline(currentProjectId), 500);
+  }
 
   if (srtPath.endsWith('.srt') || srtPath.endsWith('.ass')) {
-    const form = new FormData();
-    const blob = new Blob([srtPath], { type: 'text/plain' });
-    form.append('file', blob, 'import.srt');
     try {
-      const res = await fetch(API_BASE + `/subtitle/import?project_id=${currentProjectId || 0}`, { method: 'POST', body: form });
-      if (res.ok) {
-        loadProgress.style.width = '100%';
-        loadPct.textContent = '100%';
+      const res = await apiPost('/subtitle/import-path', { path: srtPath, project_id: currentProjectId || 0 });
+      if (res) {
+        if (loadProgress) loadProgress.style.width = '100%';
+        if (loadPct) loadPct.textContent = '100%';
+      } else {
+        if (loadProgress) loadProgress.style.width = '0%';
+        if (loadPct) loadPct.textContent = '0%';
       }
     } catch (e) {
-      loadProgress.style.width = '0%';
-      loadPct.textContent = '0%';
+      if (loadProgress) loadProgress.style.width = '0%';
+      if (loadPct) loadPct.textContent = '0%';
     }
   } else {
-    loadProgress.style.width = '100%';
-    loadPct.textContent = '100%';
+    if (loadProgress) loadProgress.style.width = '100%';
+    if (loadPct) loadPct.textContent = '100%';
   }
 });
 
@@ -462,25 +531,36 @@ const executeBtn = document.getElementById('btn-execute');
 const executeCountMax = 5;
 let executeCount = executeCountMax;
 
+const LANG_MAP_EXEC = {'Tiếng Anh':'en','Tiếng Trung':'zh','Tiếng Nhật':'ja','Tiếng Hàn':'ko','Tiếng Việt':'vi'};
+
 executeBtn.addEventListener('click', async () => {
   if (isRunning) return;
+
+  const inputPath = document.getElementById('inp-video-path')?.value || document.getElementById('inp-srt-path')?.value || '';
+  if (!inputPath) {
+    alert('Vui lòng chọn file video hoặc subtitle trước!');
+    return;
+  }
+
   isRunning = true;
   executeCount--;
   if (executeCount <= 0) executeCount = executeCountMax;
   executeBtn.textContent = `▶ ĐANG XỬ LÝ...`;
   executeBtn.style.background = '#f59e0b';
 
-  const inputPath = document.getElementById('inp-video-path')?.value || document.getElementById('inp-srt-path')?.value || '';
-  const outPath = document.getElementById('inp-output-path')?.value || 'output.mp4';
+  const inputName = inputPath.split(/[\\/]/).pop().replace(/\.[^.]+$/, '') || 'output';
+  const selFrom = document.getElementById('sel-lang-from')?.value;
+  const selTo = document.getElementById('sel-lang-to')?.value;
 
   const params = {
-    source_lang: document.getElementById('sel-lang-from')?.value === 'Tiếng Anh' ? 'en' : 'zh',
-    target_lang: document.getElementById('sel-lang-to')?.value === 'Tiếng Anh' ? 'en' : 'vi',
+    source_lang: LANG_MAP_EXEC[selFrom] || 'en',
+    target_lang: LANG_MAP_EXEC[selTo] || 'vi',
     translate_engine: 'gpt',
     tts_provider: document.getElementById('sel-tts-provider')?.value?.toLowerCase().replace(' tts', '').replace(' (free)', '') || 'edge',
     tts_voice: document.getElementById('sel-voice-type')?.value === 'Nam' ? 'vi-VN-NamMinhNeural' : 'vi-VN-HoaiMyNeural',
-    burn_subtitle: document.querySelector('#tab-subtitle .custom-checkbox input')?.checked || true,
-    output_name: outPath.split(/[\\/]/).pop().replace(/\.[^.]+$/, '') || 'output',
+    burn_subtitle: document.querySelector('#tab-subtitle .custom-checkbox input')?.checked ?? true,
+    output_name: inputName,
+    output_dir: document.getElementById('inp-output-path')?.value || undefined,
     preset: document.getElementById('sel-project-preset')?.value || 'Movie Review',
   };
 
@@ -494,36 +574,46 @@ executeBtn.addEventListener('click', async () => {
   startCountdown(600);
   addTaskRow();
 
-  if (item && item.id) {
-    const poll = setInterval(async () => {
-      const q = await apiGet(`/queue`);
-      if (q) {
-        const running = q.find(r => r.id === item.id);
-        if (running) {
-          progressVal = running.progress || 0;
-          queueFill.style.height = progressVal + '%';
-          updateLastRow(progressVal);
-          if (running.status === 'completed') {
-            clearInterval(poll);
-            finishExecute();
-          } else if (running.status === 'failed') {
-            clearInterval(poll);
-            finishExecute();
-          }
-        }
-      }
-    }, 1000);
-  } else {
-    const interval = setInterval(() => {
-      progressVal = Math.min(progressVal + Math.random() * 3, 100);
+  if (!item || !item.id) {
+    addClientLog('error', 'Backend không tạo được job. Kiểm tra API key và file input.');
+    isRunning = false;
+    executeBtn.textContent = `▶ THỰC HIỆN (${executeCount})`;
+    executeBtn.style.background = '#ef4444';
+    updateLastRow(0, 'failed');
+    return;
+  }
+
+  let timeoutId = setTimeout(() => {
+    addClientLog('error', 'Job timeout sau 10 phút');
+    finishExecute();
+    stopTracking();
+  }, 600000);
+
+  function onTrackUpdate(data) {
+    const running = data.find(r => r.id === item.id);
+    if (running) {
+      progressVal = running.progress || 0;
       queueFill.style.height = progressVal + '%';
       updateLastRow(progressVal);
-      if (progressVal >= 100) {
-        clearInterval(interval);
+      if (running.status === 'completed' || running.status === 'failed') {
+        clearTimeout(timeoutId);
+        stopTracking();
         finishExecute();
+        if (running.status === 'completed' && currentProjectId) {
+          loadTimeline(currentProjectId);
+        }
       }
-    }, 300);
+    }
   }
+
+  function stopTracking() {
+    var idx = queueListeners.indexOf(onTrackUpdate);
+    if (idx !== -1) queueListeners.splice(idx, 1);
+  }
+
+  onQueueChange(onTrackUpdate);
+
+  if (latestQueueData) onTrackUpdate(latestQueueData);
 });
 
 function finishExecute() {
@@ -623,45 +713,36 @@ document.getElementById('btn-detect-scenes')?.addEventListener('click', async ()
 const resultBody = document.getElementById('result-table-body');
 let rowCount = 0;
 
-function addTaskRow(inputName = '', outputName = '', progress = 0, elapsed = '--:--', subGoc = '—', subDich = '—') {
+function addTaskRow() {
   rowCount++;
-  if (!inputName) inputName = `video_${rowCount}.mp4`;
-  if (!outputName) outputName = `output_${rowCount}.mp4`;
-  
-  const row = document.createElement('div');
-  row.className = 'result-row';
-  row.id = `task-row-${rowCount}`;
-  row.innerHTML = `
-    <div class="result-cell" style="width:110px;color:#a78bfa">${inputName}</div>
-    <div class="result-cell" style="width:130px;color:#94a3b8">${outputName}</div>
-    <div class="result-cell" style="width:100px">
-      <div class="mini-progress"><div class="mini-progress-fill" id="mini-fill-${rowCount}" style="width:${progress}%"></div></div>
-    </div>
-    <div class="result-cell" style="width:50px">${rowCount}</div>
-    <div class="result-cell" style="width:100px;color:#facc15">${elapsed}</div>
-    <div class="result-cell flex1" style="color:#8892a4">${subGoc}</div>
-    <div class="result-cell flex1" style="color:#8892a4">${subDich}</div>
-  `;
-  resultBody.appendChild(row);
-  resultBody.scrollTop = resultBody.scrollHeight;
+  if (latestQueueData && latestQueueData.length > 0) {
+    renderQueueRows(latestQueueData);
+  } else {
+    apiGet('/queue').then(jobs => { if (jobs) renderQueueRows(jobs); });
+  }
 }
 
 function updateLastRow(pct) {
-  const fill = document.getElementById(`mini-fill-${rowCount}`);
-  if (fill) fill.style.width = pct + '%';
-  const row = document.getElementById(`task-row-${rowCount}`);
-  if (row) {
-    const timeCell = row.querySelectorAll('.result-cell')[4];
-    if (timeCell) {
-      const elapsed = Math.round(pct * 3);
-      timeCell.textContent = formatTime(elapsed);
-      timeCell.style.color = pct >= 100 ? '#22c55e' : '#facc15';
+  if (latestQueueData && latestQueueData.length > 0) {
+    const last = latestQueueData[latestQueueData.length - 1];
+    if (last && last.id) {
+      const row = document.querySelector(`[data-job-id="${last.id}"]`);
+      if (row) {
+        const fillId = row.id?.replace('task-row-', 'mini-fill-');
+        const fill = document.getElementById(fillId);
+        if (fill) fill.style.width = pct + '%';
+        const timeCell = row.querySelectorAll('.result-cell')[4];
+        if (timeCell) {
+          timeCell.textContent = formatTime(Math.round(pct * 3));
+          timeCell.style.color = pct >= 100 ? '#22c55e' : '#facc15';
+        }
+      }
     }
   }
 }
 
 /* ─── Crop checkbox toggle ─── */
-document.getElementById('chk-crop-video').addEventListener('change', function() {
+document.getElementById('chk-crop-video')?.addEventListener('change', function() {
   const pos = document.getElementById('inp-crop-pos');
   const btn = document.getElementById('btn-chon-vi-tri');
   pos.disabled = !this.checked;
@@ -670,13 +751,13 @@ document.getElementById('chk-crop-video').addEventListener('change', function() 
   btn.style.opacity = this.checked ? '1' : '0.4';
 });
 // Init state
-document.getElementById('inp-crop-pos').disabled = true;
-document.getElementById('inp-crop-pos').style.opacity = '0.4';
-document.getElementById('btn-chon-vi-tri').disabled = true;
-document.getElementById('btn-chon-vi-tri').style.opacity = '0.4';
+const cropPos = document.getElementById('inp-crop-pos');
+const chonViTri = document.getElementById('btn-chon-vi-tri');
+if (cropPos) { cropPos.disabled = true; cropPos.style.opacity = '0.4'; }
+if (chonViTri) { chonViTri.disabled = true; chonViTri.style.opacity = '0.4'; }
 
 /* ─── Resize checkbox toggle ─── */
-document.getElementById('chk-resize').addEventListener('change', function() {
+document.getElementById('chk-resize')?.addEventListener('change', function() {
   ['inp-height','inp-width','chk-keep-ratio'].forEach(id => {
     const el = document.getElementById(id);
     if (el) {
@@ -748,7 +829,7 @@ document.querySelectorAll('.tree-node.parent').forEach(parent => {
 });
 
 /* ═══════════════ QUEUE CONTROLS (API) ═══════════════ */
-document.getElementById('btn-retry-failed').addEventListener('click', async () => {
+document.getElementById('btn-retry-failed')?.addEventListener('click', async () => {
   await apiPost('/queue/retry-all');
   document.querySelectorAll('.queue-job[data-status="failed"]').forEach(job => {
     job.dataset.status = 'running';
@@ -758,7 +839,7 @@ document.getElementById('btn-retry-failed').addEventListener('click', async () =
   });
 });
 
-document.getElementById('btn-pause-queue').addEventListener('click', async () => {
+document.getElementById('btn-pause-queue')?.addEventListener('click', async () => {
   await apiPost('/queue/pause-all');
   document.querySelectorAll('.queue-job[data-status="running"]').forEach(job => {
     job.dataset.status = 'paused';
@@ -767,7 +848,7 @@ document.getElementById('btn-pause-queue').addEventListener('click', async () =>
   });
 });
 
-document.getElementById('btn-resume-queue').addEventListener('click', async () => {
+document.getElementById('btn-resume-queue')?.addEventListener('click', async () => {
   await apiPost('/queue/resume-all');
   document.querySelectorAll('.queue-job[data-status="paused"]').forEach(job => {
     job.dataset.status = 'running';
@@ -949,7 +1030,10 @@ sidebarFlyout?.addEventListener('click', (e) => {
 
   if (targetTabId) {
     const tabBtn = document.querySelector(`#processing-tabs .tab[data-target="${targetTabId}"]`);
-    if (tabBtn) tabBtn.click();
+    if (tabBtn) {
+      if (window._switchTab) window._switchTab(tabBtn);
+      else tabBtn.click();
+    }
   }
 });
 
@@ -1211,7 +1295,10 @@ document.querySelectorAll('.nav-item').forEach(item => {
     const targetTabId = navToTabMap[navTab];
     if (targetTabId) {
       const tabBtn = document.querySelector(`#processing-tabs .tab[data-target="${targetTabId}"]`);
-      if (tabBtn) tabBtn.click();
+      if (tabBtn) {
+        if (window._switchTab) window._switchTab(tabBtn);
+        else tabBtn.click();
+      }
     }
   });
 });
@@ -1258,13 +1345,6 @@ async function loadTimeline(projectId) {
   }
   setTimeout(makeTimelineInteractive, 100);
 }
-
-/* ─── Load timeline on project create/load ─── */
-document.getElementById('btn-load')?.addEventListener('click', async () => {
-  if (currentProjectId) {
-    setTimeout(() => loadTimeline(currentProjectId), 500);
-  }
-});
 
 /* ═══════════════ MUSIC TAB HANDLERS ═══════════════ */
 document.getElementById('btn-music-apply')?.addEventListener('click', async () => {
@@ -1638,6 +1718,23 @@ setTimeout(async () => {
   }
 }, 200);
 
+/* ═══════════════ SETTINGS SAVE ═══════════════ */
+document.getElementById('btn-save-settings')?.addEventListener('click', async () => {
+  const data = {
+    openai_key: document.getElementById('inp-set-openai')?.value || '',
+    elevenlabs_key: document.getElementById('inp-set-eleven')?.value || '',
+    ffmpeg_path: document.getElementById('inp-set-ffmpeg')?.value || '',
+    proxy: document.getElementById('inp-set-proxy')?.value || '',
+    cookie_file: document.getElementById('inp-set-cookie')?.value || '',
+    youtube_cookie: document.getElementById('inp-set-yt-cookie')?.value || '',
+  };
+  const result = await apiPut('/settings', data);
+  if (result) {
+    alert('Đã lưu cài đặt!');
+    document.getElementById('settings-modal')?.classList.remove('show');
+  }
+});
+
 /* ═══════════════ MODAL LOGIC ═══════════════ */
 document.querySelectorAll('.close-modal').forEach(btn => {
   btn.addEventListener('click', (e) => {
@@ -1756,38 +1853,57 @@ document.getElementById('btn-batch-download')?.addEventListener('click', async (
   const urls = urlsInput.split('\n').map(u => u.trim()).filter(Boolean);
   if (urls.length === 0) return;
   const quality = document.getElementById('sel-download-quality')?.value || 'best';
-  const result = await apiPost('/batch/urls', { urls, quality, project_id: currentProjectId || 1 });
+  const proxy = document.getElementById('inp-download-proxy')?.value || '';
+  const cookie = document.getElementById('inp-set-cookie')?.value || '';
+  const result = await apiPost('/batch/download', { urls, quality, proxy, cookie_file: cookie, project_id: currentProjectId || 1 });
   if (result) {
     for (let i = 0; i < urls.length; i++) addTaskRow();
     document.getElementById('inp-batch-urls').value = '';
+    setTimeout(loadDownloadHistory, 500);
   }
 });
 
 /* ═══════════════ TEMPLATE HANDLERS ═══════════════ */
-document.getElementById('btn-save-template')?.addEventListener('click', async () => {
-  const name = prompt('Template name:', 'My Template');
-  if (!name) return;
-  const config = {
-    name,
-    preset: document.getElementById('sel-project-preset')?.value || 'Movie Review',
-    voice: { provider: document.getElementById('sel-tts-provider')?.value?.toLowerCase() || 'edge' },
-    subtitle: { font: 'Arial', size: 42, color: '#FFFFFF', burn: true },
-    export: {
-      resolution: (document.getElementById('inp-width')?.value || '1920') + 'x' + (document.getElementById('inp-height')?.value || '1080'),
-      fps: parseInt(document.getElementById('sel-export-fps')?.value || '30'),
-      codec: document.getElementById('sel-export-codec')?.value || 'h264',
-    },
-  };
-  await apiPost('/templates?name=' + encodeURIComponent(name), config);
-  alert(`Template '${name}' saved`);
-});
 
-document.getElementById('btn-load-template')?.addEventListener('click', async () => {
+function openTemplateModal() {
+  const modal = document.getElementById('template-modal');
+  if (modal) modal.classList.add('show');
+  loadTemplateList();
+}
+
+async function loadTemplateList() {
+  const container = document.getElementById('template-list');
+  if (!container) return;
   const templates = await apiGet('/templates');
-  if (!templates || templates.length === 0) { alert('No templates available'); return; }
-  const names = templates.map(t => t.name).join('\n');
-  const name = prompt(`Available templates:\n${names}\n\nEnter template name to load:`);
-  if (!name) return;
+  if (!templates || templates.length === 0) {
+    container.innerHTML = '<div class="log-placeholder">No templates yet.</div>';
+    document.getElementById('template-count') && (document.getElementById('template-count').textContent = '0 templates');
+    return;
+  }
+  container.innerHTML = templates.map(t => `
+    <div class="result-table-header" style="padding:2px 6px;font-size:9px;border-bottom:1px solid var(--border);cursor:default">
+      <span class="col-hdr" style="flex:2">${t.name || 'Unnamed'}</span>
+      <span class="col-hdr" style="flex:1">${t.preset || '-'}</span>
+      <span class="col-hdr" style="width:60px">${t.resolution || '-'}</span>
+      <span class="col-hdr" style="width:40px">${t.fps || '-'}</span>
+      <span class="col-hdr" style="width:100px;display:flex;gap:4px">
+        <button class="action-btn tmpl-load" data-name="${t.name}" style="height:18px;padding:0 6px;font-size:8px">Load</button>
+        <button class="action-btn tmpl-delete" data-name="${t.name}" style="height:18px;padding:0 6px;font-size:8px;background:#ef4444;color:#fff;border:none">Xóa</button>
+      </span>
+    </div>
+  `).join('');
+  container.querySelectorAll('.tmpl-load').forEach(btn => {
+    btn.addEventListener('click', () => applyTemplateByName(btn.dataset.name));
+  });
+  container.querySelectorAll('.tmpl-delete').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      await apiDel('/templates/' + encodeURIComponent(btn.dataset.name));
+      loadTemplateList();
+    });
+  });
+}
+
+async function applyTemplateByName(name) {
   const tmpl = await apiGet('/templates/' + encodeURIComponent(name));
   if (tmpl && tmpl.export) {
     if (tmpl.export.resolution) {
@@ -1803,6 +1919,107 @@ document.getElementById('btn-load-template')?.addEventListener('click', async ()
   if (currentProjectId && name) {
     await apiPost(`/templates/${encodeURIComponent(name)}/apply?project_id=${currentProjectId}`);
   }
+  document.getElementById('template-modal')?.classList.remove('show');
+}
+
+document.getElementById('btn-save-template')?.addEventListener('click', async () => {
+  const name = document.getElementById('inp-template-name')?.value || prompt('Template name:', 'My Template');
+  if (!name) return;
+  const config = {
+    name,
+    preset: document.getElementById('sel-project-preset')?.value || 'Movie Review',
+    voice: { provider: document.getElementById('sel-tts-provider')?.value?.toLowerCase() || 'edge' },
+    subtitle: { font: 'Arial', size: 42, color: '#FFFFFF', burn: true },
+    export: {
+      resolution: (document.getElementById('inp-width')?.value || '1920') + 'x' + (document.getElementById('inp-height')?.value || '1080'),
+      fps: parseInt(document.getElementById('sel-export-fps')?.value || '30'),
+      codec: document.getElementById('sel-export-codec')?.value || 'h264',
+    },
+  };
+  await apiPost('/templates?name=' + encodeURIComponent(name), config);
+  loadTemplateList();
+  if (document.getElementById('inp-template-name')) document.getElementById('inp-template-name').value = '';
+});
+
+document.getElementById('btn-load-template')?.addEventListener('click', openTemplateModal);
+
+document.getElementById('btn-template-save')?.addEventListener('click', () => {
+  document.getElementById('btn-save-template')?.click();
+});
+
+document.getElementById('btn-template-refresh')?.addEventListener('click', loadTemplateList);
+
+// Wire template modal close to also close when clicking background
+document.getElementById('template-modal')?.addEventListener('click', function (e) {
+  if (e.target === this) this.classList.remove('show');
+});
+
+/* ═══════════════ PUBLISH HISTORY ═══════════════ */
+document.getElementById('btn-publish-history')?.addEventListener('click', async () => {
+  const modal = document.getElementById('publish-history-modal');
+  if (modal) modal.classList.add('show');
+  await loadPublishHistory();
+});
+
+document.getElementById('btn-pub-history-refresh')?.addEventListener('click', loadPublishHistory);
+
+document.getElementById('publish-history-modal')?.addEventListener('click', function (e) {
+  if (e.target === this) this.classList.remove('show');
+});
+
+async function loadPublishHistory() {
+  const container = document.getElementById('publish-history-list');
+  const countEl = document.getElementById('pub-history-count');
+  if (!container) return;
+  const items = await apiGet('/publish/history');
+  if (!items || items.length === 0) {
+    container.innerHTML = '<div class="log-placeholder">Chưa có lịch sử publish.</div>';
+    if (countEl) countEl.textContent = '0 items';
+    return;
+  }
+  container.innerHTML = items.map(item => `
+    <div class="result-table-header" style="padding:2px 6px;font-size:9px;border-bottom:1px solid var(--border)">
+      <span class="col-hdr" style="flex:2">${item.title || item.input_path?.split(/[\\/]/).pop() || 'Unknown'}</span>
+      <span class="col-hdr" style="flex:1">${item.format || '-'}</span>
+      <span class="col-hdr" style="width:70px"><span class="queue-status-${item.status || 'exported'}">${item.status || 'exported'}</span></span>
+      <span class="col-hdr" style="width:120px">${item.created_at ? item.created_at.slice(0, 19) : '-'}</span>
+    </div>
+  `).join('');
+  if (countEl) countEl.textContent = items.length + ' items';
+}
+
+/* ═══════════════ DOWNLOAD HISTORY ═══════════════ */
+async function loadDownloadHistory() {
+  const container = document.getElementById('download-history-list');
+  if (!container) return;
+  const items = await apiGet('/download');
+  if (!items || items.length === 0) {
+    container.innerHTML = '<div class="log-placeholder">Chưa có download nào.</div>';
+    return;
+  }
+  container.innerHTML = items.slice().reverse().map(item => `
+    <div class="result-table-header" style="padding:2px 6px;font-size:9px;border-bottom:1px solid var(--border)">
+      <span class="col-hdr" style="flex:2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${item.url || item.id}</span>
+      <span class="col-hdr" style="width:60px">${item.platform || '-'}</span>
+      <span class="col-hdr" style="width:60px"><span class="queue-status-${item.status || 'unknown'}">${item.status || '?'}</span></span>
+      <span class="col-hdr" style="width:50px">
+        ${item.status === 'running' || item.status === 'waiting' ? `<button class="action-btn dl-cancel" data-id="${item.id}" style="height:16px;padding:0 4px;font-size:7px;background:#ef4444;color:#fff;border:none">Hủy</button>` : ''}
+      </span>
+    </div>
+  `).join('');
+  container.querySelectorAll('.dl-cancel').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      await apiPost(`/download/${btn.dataset.id}/cancel`);
+      loadDownloadHistory();
+    });
+  });
+}
+
+document.getElementById('btn-dl-history-refresh')?.addEventListener('click', loadDownloadHistory);
+
+// Load download history when the download modal opens
+document.querySelector('[data-tab="download"]')?.addEventListener('click', function () {
+  setTimeout(loadDownloadHistory, 300);
 });
 
 /* ═══════════════ MUSIC CROSSFADE / PLAYLIST ═══════════════ */
@@ -2062,22 +2279,13 @@ async function updateSceneList() {
 }
 
 // Override scene detect button to also refresh list
-const origDetect = document.getElementById('btn-detect-scenes')?.click;
-if (document.getElementById('btn-detect-scenes')) {
-  const oldHandler = document.getElementById('btn-detect-scenes').click;
-  document.getElementById('btn-detect-scenes').addEventListener('click', async () => {
-    setTimeout(updateSceneList, 2000);
-  });
-}
+document.getElementById('btn-detect-scenes')?.addEventListener('click', async () => {
+  setTimeout(updateSceneList, 2000);
+});
 
 /* ═══════════════ ASSET TEMPLATES BUTTON ═══════════════ */
-document.querySelector('.asset-item:last-child')?.addEventListener('click', async () => {
-  const templates = await apiGet('/templates');
-  if (templates && templates.length > 0) {
-    alert('Templates:\n' + templates.map(t => `• ${t.name} (${t.resolution}, ${t.fps}fps)`).join('\n'));
-  } else {
-    alert('No templates saved yet.\nUse "Save Template" in Work Mode to create one.');
-  }
+document.querySelector('.asset-item:last-child')?.addEventListener('click', () => {
+  openTemplateModal();
 });
 
 /* ═══════════════ CLOSE MODALS ON OVERLAY CLICK ═══════════════ */
@@ -2289,40 +2497,35 @@ async function initQueueTable() {
   renderQueueRows(staticJobs);
 }
 
-// Gọi khi trang load xong
 document.addEventListener('DOMContentLoaded', () => {
   initQueueTable();
+  onQueueChange(sseQueueRefresh);
 });
 
-// Nếu DOMContentLoaded đã qua (script ở cuối body)
 if (document.readyState === 'complete' || document.readyState === 'interactive') {
   initQueueTable();
+  onQueueChange(sseQueueRefresh);
 }
 
-// Poll queue mỗi 5s để cập nhật realtime
-setInterval(async () => {
-  const jobs = await apiGet('/queue');
-  if (jobs && Array.isArray(jobs) && jobs.length > 0) {
-    // Chỉ re-render nếu có thay đổi số lượng hoặc status
-    const body = document.getElementById('result-table-body');
-    const currentRows = body ? body.querySelectorAll('.result-row').length : 0;
-    const hasStatusChange = jobs.some(j => {
+function sseQueueRefresh(jobs) {
+  if (!jobs || jobs.length === 0) return;
+  const body = document.getElementById('result-table-body');
+  if (!body) return;
+  const currentRows = body.querySelectorAll('.result-row').length;
+  const hasStatusChange = jobs.some(j => {
+    const row = document.querySelector(`[data-job-id="${j.id}"]`);
+    return row && row.dataset.status !== j.status;
+  });
+  if (jobs.length !== currentRows || hasStatusChange) {
+    renderQueueRows(jobs);
+  } else {
+    jobs.forEach(j => {
       const row = document.querySelector(`[data-job-id="${j.id}"]`);
-      return row && row.dataset.status !== j.status;
+      if (row) {
+        const fillId = row.id?.replace('task-row-', 'mini-fill-');
+        const fill = document.getElementById(fillId);
+        if (fill) fill.style.width = (j.progress || 0) + '%';
+      }
     });
-    if (jobs.length !== currentRows || hasStatusChange) {
-      renderQueueRows(jobs);
-    } else {
-      // Chỉ update progress bars
-      jobs.forEach(j => {
-        const row = document.querySelector(`[data-job-id="${j.id}"]`);
-        if (row) {
-          const fillId = row.id?.replace('task-row-', 'mini-fill-');
-          const fill = document.getElementById(fillId);
-          if (fill) fill.style.width = (j.progress || 0) + '%';
-        }
-      });
-    }
   }
-}, 5000);
-
+};

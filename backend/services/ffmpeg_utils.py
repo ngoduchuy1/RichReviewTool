@@ -7,14 +7,17 @@ from ..config import FFMPEG_PATH, FFPROBE_PATH, EXPORTS_DIR
 
 def run_ffmpeg(cmd: list, timeout: int = 3600) -> bool:
     full_cmd = [FFMPEG_PATH, "-y"] + cmd
+    print(f"[FFmpeg] {' '.join(str(a) for a in full_cmd)}")
     try:
-        subprocess.run(full_cmd, check=True, capture_output=True, text=True, timeout=timeout)
+        result = subprocess.run(full_cmd, check=True, capture_output=True, text=True, timeout=timeout)
         return True
     except subprocess.CalledProcessError as e:
-        print(f"FFmpeg error: {e.stderr}")
+        err = (e.stderr or "")
+        tail = err[-2000:] if len(err) > 2000 else err
+        print(f"[FFmpeg] ERROR (rc={e.returncode}): {tail}")
         return False
     except FileNotFoundError:
-        print("FFmpeg not found. Install FFmpeg or set FFMPEG_PATH.")
+        print("[FFmpeg] NOT FOUND — install FFmpeg or set FFMPEG_PATH env")
         return False
 
 
@@ -125,35 +128,51 @@ def merge_videos(file_paths: list, output_path: str):
     return result
 
 
+def _temp_copy(path: str) -> str:
+    """Copy file to %TEMP% to avoid special chars in path (e.g. &)."""
+    import shutil
+    import tempfile
+    ext = Path(path).suffix
+    tmp = os.path.join(tempfile.gettempdir(), f"sub_burn_{os.getpid()}_{os.urandom(4).hex()}{ext}")
+    shutil.copy2(path, tmp)
+    return tmp
+
+def _filter_path(path: str) -> str:
+    """Return POSIX path with colon escaped for use inside filename='...'."""
+    return path.replace("\\", "/").replace(":", "\\:")
+
 def burn_subtitle(video_path: str, subtitle_path: str, output_path: str = None) -> str:
     """Burn subtitles into video using FFmpeg subtitles filter."""
     if not output_path:
         output_path = video_path.replace(".mp4", "_subbed.mp4")
 
+    # copy to %TEMP% to avoid & etc in the path
+    safe_src = _temp_copy(subtitle_path)
     sub_ext = Path(subtitle_path).suffix.lower()
 
     if sub_ext == ".srt":
-        # Escape special chars in path for FFmpeg filter
-        safe_path = subtitle_path.replace("\\", "/").replace(":", "\\:")
+        safe_path = _filter_path(safe_src)
         cmd = [
             "-i", video_path,
-            "-vf", f"subtitles={safe_path}",
+            "-vf", f"subtitles=filename='{safe_path}'",
             "-c:a", "copy",
             "-y", output_path,
         ]
     elif sub_ext == ".ass":
-        safe_path = subtitle_path.replace("\\", "/").replace(":", "\\:")
+        safe_path = _filter_path(safe_src)
         cmd = [
             "-i", video_path,
-            "-vf", f"ass={safe_path}",
+            "-vf", f"ass=filename='{safe_path}'",
             "-c:a", "copy",
             "-y", output_path,
         ]
     else:
-        # Fallback: draw text filter per line
         cmd = ["-i", video_path, "-c", "copy", "-y", output_path]
 
-    run_ffmpeg(cmd)
+    if not run_ffmpeg(cmd):
+        raise RuntimeError(f"FFmpeg burn_subtitle failed for {video_path}")
+    if not os.path.exists(output_path):
+        raise RuntimeError(f"burn_subtitle output not created: {output_path}")
     return output_path
 
 
@@ -162,7 +181,10 @@ def replace_audio(video_path: str, audio_path: str, output_path: str = None) -> 
     if not output_path:
         output_path = video_path.replace(".mp4", "_newaudio.mp4")
     cmd = ["-i", video_path, "-i", audio_path, "-c:v", "copy", "-map", "0:v:0", "-map", "1:a:0", "-shortest", "-y", output_path]
-    run_ffmpeg(cmd)
+    if not run_ffmpeg(cmd):
+        raise RuntimeError(f"FFmpeg replace_audio failed for {video_path}")
+    if not os.path.exists(output_path):
+        raise RuntimeError(f"replace_audio output not created: {output_path}")
     return output_path
 
 
