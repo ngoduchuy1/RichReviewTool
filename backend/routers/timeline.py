@@ -22,14 +22,14 @@ def get_timeline(project_id: int):
     with db_cursor() as cur:
         row = cur.execute("SELECT id FROM projects WHERE id=?", (project_id,)).fetchone()
         if not row:
-            raise HTTPException(404, "Project not found")
+            raise HTTPException(404, "Không tìm thấy dự án")
     return timeline_to_json(project_id)
 
 
 @router.put("/{project_id}")
 def set_timeline(project_id: int, data: dict):
     timeline_from_json(project_id, data)
-    return {"message": "Timeline updated"}
+    return {"message": "Đã cập nhật dòng thời gian"}
 
 
 @router.get("/{project_id}/ffmpeg")
@@ -58,13 +58,13 @@ def edit_track(track_id: int, name: str = None, muted: int = None, locked: int =
     if locked is not None: kwargs["locked"] = locked
     if kwargs:
         update_track(track_id, **kwargs)
-    return {"message": "Track updated"}
+    return {"message": "Đã cập nhật track"}
 
 
 @router.delete("/tracks/{track_id}")
 def remove_track(track_id: int):
     delete_track(track_id)
-    return {"message": "Track deleted"}
+    return {"message": "Đã xóa track"}
 
 
 # ─── Clips ───
@@ -97,19 +97,19 @@ def edit_clip(clip_id: int, source_path: str = None, name: str = None,
     if opacity is not None: kwargs["opacity"] = opacity
     if kwargs:
         update_clip(clip_id, **kwargs)
-    return {"message": "Clip updated"}
+    return {"message": "Đã cập nhật clip"}
 
 
 @router.delete("/clips/{clip_id}")
 def remove_clip(clip_id: int):
     delete_clip(clip_id)
-    return {"message": "Clip deleted"}
+    return {"message": "Đã xóa clip"}
 
 
 @router.put("/clips/{clip_id}/move")
 def move_clip_endpoint(clip_id: int, track_id: int = None, position: int = None):
     move_clip(clip_id, track_id, position)
-    return {"message": "Clip moved"}
+    return {"message": "Đã di chuyển clip"}
 
 
 # ─── Markers ───
@@ -128,7 +128,7 @@ def list_markers(project_id: int):
 @router.delete("/markers/{marker_id}")
 def remove_marker(marker_id: int):
     delete_marker(marker_id)
-    return {"message": "Marker deleted"}
+    return {"message": "Đã xóa đánh dấu"}
 
 
 # ─── Transitions ───
@@ -143,3 +143,114 @@ def add_transition(project_id: int, clip_a_id: int, clip_b_id: int,
 @router.get("/{project_id}/transitions")
 def list_transitions(project_id: int):
     return get_transitions(project_id)
+
+
+# ─── Video & Music Timeline Sync ───
+
+@router.post("/{project_id}/video")
+def set_timeline_video(project_id: int, data: dict):
+    import subprocess
+    import json
+    import os
+    from ..config import FFPROBE_PATH
+    from ..services.timeline_service import create_track
+    from ..database import db_cursor
+    
+    video_path = data.get("path", "")
+    if not video_path or not os.path.exists(video_path):
+        raise HTTPException(400, "Đường dẫn video không hợp lệ")
+        
+    # Get duration using ffprobe
+    cmd = [
+        FFPROBE_PATH, "-v", "quiet",
+        "-print_format", "json",
+        "-show_format",
+        video_path
+    ]
+    duration_secs = 30.0 # fallback
+    try:
+        res = subprocess.run(cmd, capture_output=True, text=True, timeout=5, creationflags=subprocess.CREATE_NO_WINDOW)
+        info = json.loads(res.stdout)
+        duration_secs = float(info.get("format", {}).get("duration", 30.0))
+    except Exception as e:
+        print(f"Error probing video duration: {e}")
+        
+    duration_frames = int(duration_secs * 30) # 30 fps
+    
+    with db_cursor() as cur:
+        # Find or create video track
+        track = cur.execute(
+            "SELECT id FROM tracks WHERE project_id=? AND type='video' LIMIT 1",
+            (project_id,)
+        ).fetchone()
+        if track:
+            track_id = track["id"]
+            # Clear old video clips
+            cur.execute("DELETE FROM clips WHERE track_id=?", (track_id,))
+        else:
+            t = create_track(project_id, "video", "Video 1", index=0)
+            track_id = t["id"]
+            
+        # Insert video clip
+        filename = os.path.basename(video_path)
+        cur.execute(
+            """INSERT INTO clips (track_id, source_path, name, start_frame, end_frame, position_frame)
+               VALUES (?,?,?,?,?,?)""",
+            (track_id, video_path, filename, 0, duration_frames, 0)
+        )
+        
+    return {"message": "Đã đồng bộ video vào timeline", "duration_frames": duration_frames}
+
+
+@router.post("/{project_id}/music")
+def set_timeline_music(project_id: int, data: dict):
+    import subprocess
+    import json
+    import os
+    from ..config import FFPROBE_PATH
+    from ..services.timeline_service import create_track
+    from ..database import db_cursor
+    
+    music_path = data.get("path", "")
+    if not music_path or not os.path.exists(music_path):
+        raise HTTPException(400, "Đường dẫn nhạc không hợp lệ")
+        
+    # Get duration using ffprobe
+    cmd = [
+        FFPROBE_PATH, "-v", "quiet",
+        "-print_format", "json",
+        "-show_format",
+        music_path
+    ]
+    duration_secs = 30.0 # fallback
+    try:
+        res = subprocess.run(cmd, capture_output=True, text=True, timeout=5, creationflags=subprocess.CREATE_NO_WINDOW)
+        info = json.loads(res.stdout)
+        duration_secs = float(info.get("format", {}).get("duration", 30.0))
+    except Exception as e:
+        print(f"Error probing music duration: {e}")
+        
+    duration_frames = int(duration_secs * 30) # 30 fps
+    
+    with db_cursor() as cur:
+        # Find or create music track
+        track = cur.execute(
+            "SELECT id FROM tracks WHERE project_id=? AND type='music' LIMIT 1",
+            (project_id,)
+        ).fetchone()
+        if track:
+            track_id = track["id"]
+            cur.execute("DELETE FROM clips WHERE track_id=?", (track_id,))
+        else:
+            t = create_track(project_id, "music", "Audio 1", index=2)
+            track_id = t["id"]
+            
+        filename = os.path.basename(music_path)
+        cur.execute(
+            """INSERT INTO clips (track_id, source_path, name, start_frame, end_frame, position_frame)
+               VALUES (?,?,?,?,?,?)""",
+            (track_id, music_path, filename, 0, duration_frames, 0)
+        )
+        
+    return {"message": "Đã đồng bộ nhạc vào timeline", "duration_frames": duration_frames}
+

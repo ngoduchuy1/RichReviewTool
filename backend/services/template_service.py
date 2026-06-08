@@ -58,7 +58,7 @@ def save_template(data: dict):
     data.setdefault("export", {"resolution": "1920x1080", "fps": 30, "codec": "h264", "bitrate": "8M"})
     data.setdefault("enhance", {"lut": "Cinematic", "brightness": 50, "contrast": 55, "saturation": 60})
     f.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
-    return {"message": f"Template '{name}' saved", "file": str(f)}
+    return {"message": f"Đã lưu Template '{name}'", "file": str(f)}
 
 
 def delete_template(name: str):
@@ -66,16 +66,16 @@ def delete_template(name: str):
     f = TEMPLATES_DIR / f"{key}.json"
     if f.exists():
         f.unlink()
-        return {"message": f"Template '{name}' deleted"}
+        return {"message": f"Đã xóa Template '{name}'"}
     for ff in TEMPLATES_DIR.glob("*.json"):
         try:
             data = json.loads(ff.read_text(encoding="utf-8"))
             if data.get("name", "") == name:
                 ff.unlink()
-                return {"message": f"Template '{name}' deleted"}
+                return {"message": f"Đã xóa Template '{name}'"}
         except (json.JSONDecodeError, OSError):
             pass
-    return {"message": f"Template '{name}' not found"}
+    return {"message": f"Không tìm thấy Template '{name}'"}
 
 
 def apply_template(project_id: int, template_name: str):
@@ -107,7 +107,7 @@ def apply_template(project_id: int, template_name: str):
         cur.execute("UPDATE projects SET preset=?, resolution=?, fps=? WHERE id=?",
                     (current.get("preset", ""), current.get("resolution", "1920x1080"),
                      current.get("fps", 30), project_id))
-    return {"message": f"Template '{template_name}' applied to project {project_id}"}
+    return {"message": f"Đã áp dụng Template '{template_name}' cho dự án {project_id}"}
 
 
 def export_project_as_template(project_id: int, template_name: str):
@@ -118,4 +118,4 @@ def export_project_as_template(project_id: int, template_name: str):
     data = json.loads(proj_file.read_text(encoding="utf-8"))
     data["name"] = template_name
     save_template(data)
-    return {"message": f"Project {project_id} exported as template '{template_name}'"}
+    return {"message": f"Đã xuất dự án {project_id} thành template '{template_name}'"}

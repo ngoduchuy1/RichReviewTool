@@ -24,14 +24,14 @@ def process_audio(
     bg: BackgroundTasks = None,
 ):
     bg.add_task(process_music, input_path, volume, fade_in, fade_out, normalize)
-    return {"message": "Processing queued"}
+    return {"message": "Đã đưa tiến trình xử lý vào hàng đợi"}
 
 
 @router.post("/duck")
 def auto_ducking(music_path: str, voice_path: str, bg: BackgroundTasks):
     from ..services.audio_processor import auto_duck
     bg.add_task(auto_duck, music_path, voice_path)
-    return {"message": "Ducking queued"}
+    return {"message": "Đã đưa tiến trình Ducking vào hàng đợi"}
 
 
 @router.get("/files")
@@ -50,7 +50,7 @@ def crossfade_music(audio_a: str, audio_b: str, duration: float = 2.0, bg: Backg
     from ..services.ffmpeg_utils import run_ffmpeg
     import os
     if not os.path.exists(audio_a) or not os.path.exists(audio_b):
-        raise HTTPException(400, "Both audio files must exist")
+        raise HTTPException(400, "Cả hai tệp âm thanh đều phải tồn tại")
     out = str(DATA_DIR / "downloads" / f"crossfade_{os.path.basename(audio_a)}")
     cmd = [
         "-i", audio_a, "-i", audio_b,
@@ -92,7 +92,7 @@ def save_playlist(data: dict):
     import json
     f = playlist_dir / f"{name.lower().replace(' ', '_')}.json"
     f.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
-    return {"message": f"Playlist '{name}' saved", "file": str(f)}
+    return {"message": f"Đã lưu Playlist '{name}'", "file": str(f)}
 
 
 @router.delete("/playlist/{name}")
@@ -101,4 +101,4 @@ def delete_playlist(name: str):
     f = playlist_dir / f"{name.lower().replace(' ', '_')}.json"
     if f.exists():
         f.unlink()
-    return {"message": f"Playlist '{name}' deleted"}
+    return {"message": f"Đã xóa Playlist '{name}'"}

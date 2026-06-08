@@ -1,11 +1,10 @@
 from fastapi import APIRouter, BackgroundTasks, HTTPException
-from ..models.schemas import AISummaryRequest, AIProjectRequest, AISceneDetectRequest, AIThumbnailRequest, AITitleRequest, AIHashtagRequest
+from ..models.schemas import AISummaryRequest, AIProjectRequest, AISceneDetectRequest, AITitleRequest, AIHashtagRequest
 from ..services.ai_service import (
     generate_summary,
     generate_recap_from_transcript,
     detect_characters,
     detect_speakers,
-    generate_thumbnail,
     generate_title,
     generate_hashtags,
 )
@@ -19,7 +18,7 @@ router = APIRouter()
 @router.post("/scene-detect")
 def scene_detect(data: AISceneDetectRequest, bg: BackgroundTasks):
     bg.add_task(detect_scenes, data.video_path, data.threshold, data.project_id)
-    return {"message": "Scene detection queued", "project_id": data.project_id}
+    return {"message": "Đã đưa tiến trình tách phân cảnh vào hàng đợi", "project_id": data.project_id}
 
 
 @router.post("/summary")
@@ -52,7 +51,7 @@ def recap(data: AIProjectRequest, bg: BackgroundTasks):
 @router.post("/characters")
 def characters(data: AIProjectRequest, bg: BackgroundTasks):
     if not data.video_path:
-        raise HTTPException(400, "video_path is required")
+        raise HTTPException(400, "Yêu cầu cung cấp video_path")
     result = detect_characters(data.video_path)
     chars = []
     for i, c in enumerate(result[:20]):
@@ -70,7 +69,7 @@ def characters(data: AIProjectRequest, bg: BackgroundTasks):
 @router.post("/speakers")
 def speakers(data: AIProjectRequest, bg: BackgroundTasks):
     if not data.video_path:
-        raise HTTPException(400, "video_path is required")
+        raise HTTPException(400, "Yêu cầu cung cấp video_path")
     result = detect_speakers(data.video_path)
     speaker_map = {}
     for s in result[:20]:
@@ -81,13 +80,6 @@ def speakers(data: AIProjectRequest, bg: BackgroundTasks):
     if not speaker_map:
         speaker_map["No speakers detected"] = []
     return {"speakers": speaker_map}
-
-
-@router.post("/thumbnail")
-def thumbnail(data: AIThumbnailRequest):
-    out = data.video_path.replace(".mp4", f"_thumb_{int(data.time)}.jpg")
-    result = generate_thumbnail(data.video_path, data.time, out)
-    return {"thumbnail_url": f"/static/{result}" if result else None}
 
 
 @router.post("/title")

@@ -15,7 +15,7 @@ def start_download(data: DownloadRequest, bg: BackgroundTasks):
         )
         dl_id = cur.lastrowid
     bg.add_task(download_video, dl_id, data.url, data.quality, data.cookie_file, data.proxy)
-    return {"id": dl_id, "message": "Download queued"}
+    return {"id": dl_id, "message": "Đã đưa tiến trình tải về vào hàng đợi"}
 
 
 @router.get("/")
@@ -30,7 +30,7 @@ def get_download(dl_id: int):
     with db_cursor() as cur:
         row = cur.execute("SELECT * FROM downloads WHERE id=?", (dl_id,)).fetchone()
         if not row:
-            raise HTTPException(404, "Download not found")
+            raise HTTPException(404, "Không tìm thấy lượt tải xuống")
         return dict(row)
 
 
@@ -38,4 +38,4 @@ def get_download(dl_id: int):
 def cancel_download(dl_id: int):
     with db_cursor() as cur:
         cur.execute("UPDATE downloads SET status='cancelled' WHERE id=?", (dl_id,))
-    return {"message": "Download cancelled"}
+    return {"message": "Đã hủy tải xuống"}

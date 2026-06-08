@@ -32,7 +32,7 @@ def create_project(data: ProjectCreate):
 def get_project(project_id: int):
     project = svc_open_project(project_id)
     if not project:
-        raise HTTPException(404, "Project not found")
+        raise HTTPException(404, "Không tìm thấy dự án")
     return project
 
 
@@ -40,27 +40,27 @@ def get_project(project_id: int):
 def update_project(project_id: int, data: ProjectUpdate):
     project = svc_open_project(project_id)
     if not project:
-        raise HTTPException(404, "Project not found")
+        raise HTTPException(404, "Không tìm thấy dự án")
     updates = data.model_dump(exclude_none=True)
     if updates:
         project.update(updates)
         svc_save_project(project_id, project)
-    return {"message": "Project updated"}
+    return {"message": "Đã cập nhật dự án"}
 
 
 @router.delete("/{project_id}")
 def delete_project(project_id: int):
     svc_delete_project(project_id)
-    return {"message": "Project deleted"}
+    return {"message": "Đã xóa dự án"}
 
 
 @router.post("/{project_id}/save")
 def save_project(project_id: int):
     project = svc_open_project(project_id)
     if not project:
-        raise HTTPException(404, "Project not found")
+        raise HTTPException(404, "Không tìm thấy dự án")
     result = svc_save_project(project_id, project)
-    return {"message": "Project saved", "version": result.get("version")}
+    return {"message": "Đã lưu dự án", "version": result.get("version")}
 
 
 @router.get("/{project_id}/versions")
@@ -71,7 +71,7 @@ def versions(project_id: int):
 @router.post("/{project_id}/restore")
 def restore(project_id: int, version_file: str):
     result = restore_version(project_id, version_file)
-    return {"message": "Version restored", "version": result.get("version")}
+    return {"message": "Đã khôi phục phiên bản", "version": result.get("version")}
 
 
 @router.get("/{project_id}/settings")

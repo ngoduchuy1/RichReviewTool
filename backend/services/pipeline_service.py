@@ -112,7 +112,7 @@ def _transcribe(item_id: int, project_id: int, video_path: str, params: dict) ->
 def _translate(item_id: int, project_id: int, params: dict) -> bool:
     src = params.get("source_lang", "zh")
     tgt = params.get("target_lang", "vi")
-    engine = params.get("translate_engine", "gpt")
+    engine = params.get("translate_engine", "nllb")
 
     with db_cursor() as cur:
         row = cur.execute(
@@ -160,12 +160,19 @@ def _tts(item_id: int, project_id: int, params: dict) -> bool:
     if not row:
         raise ValueError("No subtitle found for TTS")
 
-    text = _extract_text_from_srt(row["content"])
-    _log(item_id, "info", f"Generating TTS via {provider} ({len(text)} chars)")
-
-    from .tts_engine import synthesize
+    align = params.get("tts_align", True)
+    api_key = params.get("fpt_api_key", None)
     tts_output = str(VOICES_DIR / f"project_{project_id}_tts.wav")
-    synthesize(text, provider, voice, speed, tts_output)
+
+    if align:
+        _log(item_id, "info", f"Generating Timeline-aligned TTS via {provider}")
+        from .tts_engine import synthesize_timeline
+        synthesize_timeline(row["content"], provider, voice, speed, tts_output, api_key=api_key)
+    else:
+        text = _extract_text_from_srt(row["content"])
+        _log(item_id, "info", f"Generating flat TTS via {provider} ({len(text)} chars)")
+        from .tts_engine import synthesize
+        synthesize(text, provider, voice, speed, tts_output, api_key=api_key)
 
     if os.path.exists(tts_output):
         _register_asset("voice", tts_output, project_id)
@@ -302,12 +309,20 @@ def _full(item_id: int, project_id: int, input_path: str, params: dict) -> bool:
     # Step 4: TTS
     if params.get("tts_enabled", True):
         _log(item_id, "info", "Step 4/5: Generating voice...")
-        _tts(item_id, project_id, params)
+        try:
+            _tts(item_id, project_id, params)
+        except Exception as e:
+            _log(item_id, "warning", f"TTS step failed (continuing): {e}")
     _update(item_id, "running", 75)
 
     # Step 5: Render
     _log(item_id, "info", "Step 5/5: Rendering final video...")
-    _render(item_id, project_id, video_path, params)
+    try:
+        _render(item_id, project_id, video_path, params)
+    except Exception as e:
+        _log(item_id, "error", f"Render step failed: {e}")
+        _update(item_id, "failed", error=str(e))
+        return False
 
     _log(item_id, "info", "Full pipeline complete!")
     _update(item_id, "completed", 100)

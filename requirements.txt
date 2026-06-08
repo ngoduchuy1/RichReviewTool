@@ -13,7 +13,7 @@ yt-dlp>=2024.0.0
 pydub>=0.25.1
 
 # Phase 2: Subtitle & STT
-openai-whisper>=20231117
+faster-whisper>=1.0.0
 googletrans==4.0.0rc1
 
 # Phase 2: Scene Detection

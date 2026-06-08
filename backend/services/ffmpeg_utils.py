@@ -9,7 +9,9 @@ def run_ffmpeg(cmd: list, timeout: int = 3600) -> bool:
     full_cmd = [FFMPEG_PATH, "-y"] + cmd
     print(f"[FFmpeg] {' '.join(str(a) for a in full_cmd)}")
     try:
-        result = subprocess.run(full_cmd, check=True, capture_output=True, text=True, timeout=timeout)
+        startupinfo = subprocess.STARTUPINFO()
+        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        result = subprocess.run(full_cmd, check=True, capture_output=True, text=True, timeout=timeout, startupinfo=startupinfo, creationflags=subprocess.CREATE_NO_WINDOW)
         return True
     except subprocess.CalledProcessError as e:
         err = (e.stderr or "")
@@ -24,7 +26,7 @@ def run_ffmpeg(cmd: list, timeout: int = 3600) -> bool:
 def get_video_info(path: str) -> dict:
     cmd = [FFPROBE_PATH, "-v", "quiet", "-print_format", "json", "-show_format", "-show_streams", path]
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30, creationflags=subprocess.CREATE_NO_WINDOW)
         data = json.loads(result.stdout)
         video_stream = next((s for s in data.get("streams", []) if s["codec_type"] == "video"), {})
         audio_stream = next((s for s in data.get("streams", []) if s["codec_type"] == "audio"), {})
@@ -60,6 +62,8 @@ def render_video(input_path: str, output_path: str, params: dict = None):
 
     if p.get("bitrate"):
         cmd.extend(["-b:v", p["bitrate"]])
+    else:
+        cmd.extend(["-crf", p.get("crf", "18"), "-preset", p.get("preset", "medium")])
 
     cmd.extend(["-c:a", "aac", "-b:a", p.get("audio_bitrate", "192k"), "-y", output_path])
     return run_ffmpeg(cmd)
@@ -155,6 +159,7 @@ def burn_subtitle(video_path: str, subtitle_path: str, output_path: str = None) 
         cmd = [
             "-i", video_path,
             "-vf", f"subtitles=filename='{safe_path}'",
+            "-c:v", "libx264", "-crf", "18", "-preset", "medium",
             "-c:a", "copy",
             "-y", output_path,
         ]
@@ -163,6 +168,7 @@ def burn_subtitle(video_path: str, subtitle_path: str, output_path: str = None) 
         cmd = [
             "-i", video_path,
             "-vf", f"ass=filename='{safe_path}'",
+            "-c:v", "libx264", "-crf", "18", "-preset", "medium",
             "-c:a", "copy",
             "-y", output_path,
         ]

@@ -12,7 +12,7 @@ router = APIRouter()
 def text_to_speech(data: TTSRequest, bg: BackgroundTasks):
     out = data.output_path or str(VOICES_DIR / f"tts_{hash(data.text)}.wav")
     bg.add_task(synthesize, data.text, data.provider, data.voice, data.speed, out)
-    return {"message": "TTS queued", "output": out}
+    return {"message": "Đã đưa tiến trình TTS vào hàng đợi", "output": out}
 
 
 @router.get("/voices")
@@ -27,14 +27,14 @@ async def upload_sample(file: UploadFile = File(...)):
     content = await file.read()
     out = VOICES_DIR / f"sample_{file.filename}"
     out.write_bytes(content)
-    return {"path": str(out), "message": "Sample uploaded"}
+    return {"path": str(out), "message": "Đã tải lên tệp mẫu"}
 
 
 @router.post("/clone/train")
 def train_voice(sample_path: str, name: str, bg: BackgroundTasks):
     from ..services.voice_clone import train_clone
     bg.add_task(train_clone, sample_path, name)
-    return {"message": f"Training started for {name}"}
+    return {"message": f"Đã bắt đầu huấn luyện cho {name}"}
 
 
 @router.get("/clone/list")
@@ -57,16 +57,39 @@ def export_clone_voices():
     return {"path": str(clones_dir / "export" / "voice_pack.zip") if exports else None, "clones": exports}
 
 
-@router.post("/play")
-def play_voice(text: str = "Xin chào, đây là giọng đọc thử nghiệm", provider: str = "edge", voice: str = "vi-VN-NamMinhNeural"):
+@router.get("/play")
+def play_voice(text: str = "Xin chào, đây là giọng đọc thử nghiệm", provider: str = "edge", voice: str = "vi-VN-NamMinhNeural", fpt_api_key: str = None):
     import tempfile, os
     from ..services.tts_engine import synthesize
     out = str(VOICES_DIR / f"play_test.wav")
-    synthesize(text, provider, voice, 1.0, out)
+    synthesize(text, provider, voice, 1.0, out, api_key=fpt_api_key)
     if os.path.exists(out):
         from fastapi.responses import FileResponse
         return FileResponse(out, media_type="audio/wav", filename="test.wav")
-    return {"message": "Voice synthesis queued"}
+    return {"message": "Đã đưa tiến trình tổng hợp giọng nói vào hàng đợi"}
+
+
+@router.get("/edge-voices")
+def get_edge_voices():
+    try:
+        import edge_tts
+        import asyncio
+        async def fetch():
+            return await edge_tts.VoicesManager.create()
+        manager = asyncio.run(fetch())
+        return [
+            {
+                "short_name": v["ShortName"],
+                "gender": "Nam" if v["Gender"] == "Male" else "Nữ",
+                "locale": v["Locale"],
+                "friendly_name": v["FriendlyName"]
+            } for v in manager.voices
+        ]
+    except Exception as e:
+        return [
+            {"short_name": "vi-VN-HoaiMyNeural", "gender": "Nữ", "locale": "vi-VN", "friendly_name": "Microsoft HoaiMy Online"},
+            {"short_name": "vi-VN-NamMinhNeural", "gender": "Nam", "locale": "vi-VN", "friendly_name": "Microsoft NamMinh Online"}
+        ]
 
 
 @router.get("/providers")

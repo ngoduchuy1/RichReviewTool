@@ -37,6 +37,7 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 AZURE_TTS_KEY = os.environ.get("AZURE_TTS_KEY", "")
 AZURE_TTS_REGION = os.environ.get("AZURE_TTS_REGION", "eastus")
 ELEVENLABS_API_KEY = os.environ.get("ELEVENLABS_API_KEY", "")
+FPT_API_KEY = os.environ.get("FPT_API_KEY", "4pgQbwd6INSU8YWqNefwOawOI2gALxz7")
 
 MAX_QUEUE_WORKERS = int(os.environ.get("MAX_QUEUE_WORKERS", "2"))
 PORT = int(os.environ.get("PORT", "7860"))

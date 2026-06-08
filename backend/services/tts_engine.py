@@ -90,7 +90,7 @@ def _concat_audio_ffmpeg(file_paths: list, output_path: str) -> bool:
             "-y", "-f", "concat", "-safe", "0",
             "-i", str(list_path), "-c", "copy", output_path,
         ]
-        subprocess.run(cmd, check=True, capture_output=True, text=True, timeout=120)
+        subprocess.run(cmd, check=True, capture_output=True, text=True, timeout=120, creationflags=subprocess.CREATE_NO_WINDOW)
         return True
     except Exception as e:
         print(f"[TTS] FFmpeg concat error: {e}")
@@ -99,9 +99,14 @@ def _concat_audio_ffmpeg(file_paths: list, output_path: str) -> bool:
         list_path.unlink(missing_ok=True)
 
 
-def synthesize(text: str, provider: str, voice: str, speed: float, output_path: str):
+def synthesize(text: str, provider: str, voice: str, speed: float, output_path: str, api_key: str = None):
     if provider == "edge":
         _edge_tts(text, voice, speed, output_path)
+    elif provider == "fpt":
+        if not api_key:
+            from ..config import FPT_API_KEY
+            api_key = FPT_API_KEY
+        _fpt_tts(text, voice, speed, api_key, output_path)
     elif provider == "azure":
         _azure_tts(text, voice, speed, output_path)
     elif provider == "elevenlabs":
@@ -236,3 +241,196 @@ def _fallback_tts(text, out):
             t = i / sample_rate
             val = int(16000 * math.sin(2 * math.pi * 220 * t) * max(0, 1 - t / duration))
             wf.writeframes(struct.pack("<h", val))
+
+
+def _parse_srt_time(t_str: str) -> float:
+    t_str = t_str.strip().replace(",", ".")
+    parts = t_str.split(":")
+    h = float(parts[0])
+    m = float(parts[1])
+    s = float(parts[2])
+    return h * 3600 + m * 60 + s
+
+
+def _parse_srt(srt_content: str) -> list:
+    blocks = srt_content.strip().split("\n\n")
+    results = []
+    for block in blocks:
+        lines = [line.strip() for line in block.split("\n") if line.strip()]
+        if len(lines) >= 3:
+            time_line = lines[1]
+            if "-->" in time_line:
+                t_parts = time_line.split("-->")
+                try:
+                    start = _parse_srt_time(t_parts[0])
+                    end = _parse_srt_time(t_parts[1])
+                    text = " ".join(lines[2:])
+                    results.append({"start": start, "end": end, "text": text})
+                except Exception:
+                    pass
+    return results
+
+
+def _get_audio_duration(path: str) -> float:
+    from ..config import FFPROBE_PATH
+    import json
+    cmd = [
+        FFPROBE_PATH,
+        "-v", "quiet", "-print_format", "json", "-show_format", path
+    ]
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=10, creationflags=subprocess.CREATE_NO_WINDOW)
+        data = json.loads(result.stdout)
+        fmt = data.get("format", {})
+        return float(fmt.get("duration", 0))
+    except Exception:
+        try:
+            import wave
+            with wave.open(path, "rb") as wf:
+                return wf.getnframes() / wf.getframerate()
+        except Exception:
+            return 0.0
+
+
+def synthesize_timeline(srt_content: str, provider: str, voice: str, speed: float, output_path: str, api_key: str = None):
+    """Synthesize each subtitle segment, align it to its timeline start, speed it up if necessary, and mix."""
+    import wave
+    import json
+    from ..config import FFMPEG_PATH
+    
+    segments = _parse_srt(srt_content)
+    if not segments:
+        text = " ".join(line for line in srt_content.split("\n") if not line.strip().isdigit() and "-->" not in line)
+        synthesize(text, provider, voice, speed, output_path, api_key=api_key)
+        return
+
+    temp_files = []
+    sample_rate = 22050
+    bytes_per_sample = 2
+    
+    try:
+        with wave.open(output_path, "wb") as out_wf:
+            out_wf.setnchannels(1)
+            out_wf.setsampwidth(bytes_per_sample)
+            out_wf.setframerate(sample_rate)
+            
+            current_frame = 0
+            
+            for idx, seg in enumerate(segments):
+                start_time = seg["start"]
+                end_time = seg["end"]
+                text = seg["text"]
+                print(f"[TTS] {idx+1}/{len(segments)}")
+                
+                base_dir = os.path.dirname(output_path)
+                temp_raw = os.path.join(base_dir, f"_temp_raw_{idx}_{os.getpid()}.wav")
+                temp_norm = os.path.join(base_dir, f"_temp_norm_{idx}_{os.getpid()}.wav")
+                temp_files.extend([temp_raw, temp_norm])
+                
+                try:
+                    synthesize(text, provider, voice, speed, temp_raw, api_key=api_key)
+                except Exception as e:
+                    print(f"[TTS] Segment {idx} synthesis failed (skipping): {e}")
+                
+                if not os.path.exists(temp_raw) or os.path.getsize(temp_raw) == 0:
+                    continue
+                    
+                synth_dur = _get_audio_duration(temp_raw)
+                target_dur = end_time - start_time
+                
+                if synth_dur > target_dur and target_dur > 0.1:
+                    tempo = min(synth_dur / target_dur, 2.0)
+                    
+                    filters = []
+                    while tempo > 2.0:
+                        filters.append("atempo=2.0")
+                        tempo /= 2.0
+                    if tempo > 0.5:
+                        filters.append(f"atempo={tempo:.2f}")
+                        
+                    filter_str = ",".join(filters)
+                    cmd = [
+                        FFMPEG_PATH, "-y",
+                        "-i", temp_raw,
+                        "-filter:a", filter_str,
+                        "-ar", str(sample_rate), "-ac", "1",
+                        "-c:a", "pcm_s16le", temp_norm
+                    ]
+                else:
+                    cmd = [
+                        FFMPEG_PATH, "-y",
+                        "-i", temp_raw,
+                        "-ar", str(sample_rate), "-ac", "1",
+                        "-c:a", "pcm_s16le", temp_norm
+                    ]
+                    
+                subprocess.run(cmd, capture_output=True, creationflags=subprocess.CREATE_NO_WINDOW)
+                
+                if not os.path.exists(temp_norm) or os.path.getsize(temp_norm) == 0:
+                    continue
+                    
+                start_frame = int(start_time * sample_rate)
+                if start_frame > current_frame:
+                    silence_frames = start_frame - current_frame
+                    out_wf.writeframes(b"\x00" * (silence_frames * bytes_per_sample))
+                    current_frame = start_frame
+                    
+                with wave.open(temp_norm, "rb") as norm_wf:
+                    data = norm_wf.readframes(norm_wf.getnframes())
+                    out_wf.writeframes(data)
+                    current_frame += len(data) // bytes_per_sample
+                    
+    finally:
+        for f in temp_files:
+            try:
+                if os.path.exists(f):
+                    os.remove(f)
+            except OSError:
+                pass
+
+
+def _fpt_tts(text: str, voice: str, speed: float, api_key: str, out_path: str):
+    import requests
+    import time
+    if not api_key:
+        print("[TTS] FPT API Key is missing, falling back to edge_tts")
+        _edge_tts(text, "vi-VN-HoaiMyNeural", speed, out_path)
+        return
+
+    fpt_speed = 0
+    if speed > 1.4:
+        fpt_speed = 2
+    elif speed > 1.1:
+        fpt_speed = 1
+    elif speed < 0.7:
+        fpt_speed = -2
+    elif speed < 0.9:
+        fpt_speed = -1
+
+    headers = {
+        "api-key": api_key,
+        "voice": voice,
+        "speed": str(fpt_speed),
+        "format": "mp3"
+    }
+    url = "https://api.fpt.ai/hmi/tts/v5"
+    try:
+        response = requests.post(url, headers=headers, data=text.encode("utf-8"), timeout=15)
+        if response.status_code != 200:
+            raise RuntimeError(f"FPT API returned status code {response.status_code}")
+        data = response.json()
+        if not data.get("async"):
+            raise RuntimeError(f"FPT API failed: {data.get('message', 'Unknown error')}")
+        async_url = data["async"]
+        
+        for _ in range(30):
+            time.sleep(1)
+            poll_resp = requests.get(async_url, timeout=10)
+            if poll_resp.status_code == 200:
+                with open(out_path, "wb") as f:
+                    f.write(poll_resp.content)
+                return
+        raise TimeoutError("FPT TTS synthesis timed out")
+    except Exception as e:
+        print(f"[TTS] FPT error: {e}, falling back to edge_tts")
+        _edge_tts(text, "vi-VN-HoaiMyNeural", speed, out_path)

@@ -90,7 +90,7 @@ def _publish_ffmpeg(video_path: str, title: str, platform: str):
     with db_cursor() as cur:
         cur.execute("INSERT INTO exports (project_id, input_path, output_path, format, status) VALUES (?,?,?,?,?)",
                     (0, video_path, out_path, platform, "exported"))
-    return {"success": True, "output": out_path, "message": f"Video prepared for {platform}. API token required for direct upload."}
+    return {"success": True, "output": out_path, "message": f"Đã chuẩn bị video cho {platform}. Yêu cầu API token để tải lên trực tiếp."}
 
 
 def list_published():

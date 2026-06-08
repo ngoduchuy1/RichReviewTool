@@ -12,7 +12,7 @@ router = APIRouter()
 def render(data: QueueItemCreate, bg: BackgroundTasks):
     item_id = add_queue_item(data.project_id, "render", data.input_path, data.params)
     bg.add_task(render_video, data.input_path, str(EXPORTS_DIR / f"render_{item_id}.mp4"), data.params)
-    return {"id": item_id, "message": "Render queued"}
+    return {"id": item_id, "message": "Đã đưa tiến trình kết xuất vào hàng đợi"}
 
 
 @router.post("/export-audio")
@@ -38,7 +38,7 @@ def export_audio_from_project(data: dict, bg: BackgroundTasks = None):
             if row:
                 input_path = row["source"]
     if not input_path:
-        raise HTTPException(400, "input_path or project_id required")
+        raise HTTPException(400, "Yêu cầu cung cấp input_path hoặc project_id")
     return export_audio_route(input_path, data.get("format", "mp3"), bg)
 
 

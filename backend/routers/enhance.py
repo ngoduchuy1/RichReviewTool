@@ -56,7 +56,7 @@ def logo_overlay(data: dict, bg: BackgroundTasks):
     position = data.get("position", "top_right")
     opacity = data.get("opacity", 0.7)
     if not video_path or not logo_path:
-        raise HTTPException(400, "video_path and logo_path required")
+        raise HTTPException(400, "Yêu cầu cung cấp video_path và logo_path")
     pos_map = {"top_right": "(W-w-20):20", "bottom_right": "(W-w-20):(H-h-20)", "center": "(W-w)/2:(H-h)/2", "top_left": "20:20", "bottom_left": "20:(H-h-20)"}
     pos = pos_map.get(position, "(W-w-20):20")
     out = video_path.replace(".mp4", "_logo.mp4")
@@ -74,7 +74,7 @@ def text_overlay(data: dict, bg: BackgroundTasks):
     font_size = data.get("font_size", 48)
     color = data.get("color", "white")
     if not video_path:
-        raise HTTPException(400, "video_path required")
+        raise HTTPException(400, "Yêu cầu cung cấp video_path")
     pos_map = {"top": "x=(w-text_w)/2:y=20", "bottom": "x=(w-text_w)/2:y=h-th-20", "center": "x=(w-text_w)/2:y=(h-text_h)/2"}
     pos = pos_map.get(position, "x=(w-text_w)/2:y=h-th-20")
     out = video_path.replace(".mp4", "_text.mp4")
@@ -91,7 +91,7 @@ def qr_overlay(data: dict, bg: BackgroundTasks):
     position = data.get("position", "bottom_right")
     size = data.get("size", 120)
     if not video_path:
-        raise HTTPException(400, "video_path required")
+        raise HTTPException(400, "Yêu cầu cung cấp video_path")
     import tempfile, subprocess
     qr_file = tempfile.NamedTemporaryFile(suffix=".png", delete=False).name
     try:

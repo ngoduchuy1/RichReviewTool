@@ -95,7 +95,7 @@ def generate_thumbnail(video_path: str, time_sec: float = 0.0, output_path: str 
         output_path = video_path.replace(".mp4", "_thumb.jpg")
     cmd = ["ffmpeg", "-ss", str(time_sec), "-i", video_path, "-vframes", "1", "-q:v", "2", "-y", output_path]
     try:
-        subprocess.run(cmd, check=True, capture_output=True, text=True)
+        subprocess.run(cmd, check=True, capture_output=True, text=True, creationflags=subprocess.CREATE_NO_WINDOW)
     except Exception:
         pass
     return output_path

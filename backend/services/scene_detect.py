@@ -40,7 +40,7 @@ def _ffmpeg_scene_detect(video_path, threshold, project_id):
     ]
 
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300, creationflags=subprocess.CREATE_NO_WINDOW)
         times = []
         for line in result.stderr.split("\n"):
             if "pts_time:" in line:

@@ -21,7 +21,7 @@ def start_pipeline(data: dict):
             "url": "https://...",
             "source_lang": "zh",
             "target_lang": "vi",
-            "translate_engine": "gpt",
+            "translate_engine": "nllb",
             "tts_provider": "edge",
             "tts_voice": "vi-VN-NamMinhNeural",
             "burn_subtitle": true,
@@ -35,7 +35,7 @@ def start_pipeline(data: dict):
     params = data.get("params", {})
 
     if not project_id:
-        raise HTTPException(400, "project_id is required")
+        raise HTTPException(400, "Yêu cầu cung cấp project_id")
 
     # Ensure project exists (auto-create if missing)
     from ..database import db_cursor
@@ -49,9 +49,9 @@ def start_pipeline(data: dict):
     try:
         item_id = add_queue_item(project_id, ptype, input_path, params, priority=1)
     except Exception as e:
-        raise HTTPException(500, f"Failed to queue pipeline: {e}")
+        raise HTTPException(500, f"Không thể đưa pipeline vào hàng đợi: {e}")
 
-    return {"id": item_id, "message": f"Pipeline '{ptype}' queued"}
+    return {"id": item_id, "message": f"Đã đưa Pipeline '{ptype}' vào hàng đợi"}
 
 
 @router.post("/{item_id}/process")
@@ -61,11 +61,11 @@ def process_now(item_id: int):
     with db_cursor() as cur:
         row = cur.execute("SELECT * FROM queue_items WHERE id=?", (item_id,)).fetchone()
         if not row:
-            raise HTTPException(404, "Queue item not found")
+            raise HTTPException(404, "Không tìm thấy phần tử trong hàng đợi")
         item = dict(row)
 
     if item["status"] != "waiting":
-        raise HTTPException(400, f"Item status is '{item['status']}', not 'waiting'")
+        raise HTTPException(400, f"Trạng thái phần tử là '{item['status']}', không phải 'waiting'")
 
     success = run_pipeline(item)
-    return {"message": "Pipeline completed" if success else "Pipeline failed"}
+    return {"message": "Pipeline đã hoàn thành" if success else "Pipeline đã thất bại"}

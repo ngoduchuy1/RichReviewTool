@@ -44,7 +44,7 @@ class SubtitleRequest(BaseModel):
     engine: str = "whisper"
     translate: bool = False
     target_language: str = "vi"
-    translate_engine: str = "gpt"
+    translate_engine: str = "nllb"
 
 
 class VoiceRequest(BaseModel):

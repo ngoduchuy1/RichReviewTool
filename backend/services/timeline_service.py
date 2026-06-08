@@ -274,3 +274,59 @@ def timeline_to_ffmpeg(project_id: int) -> list:
                 cmd["trim"] = {"start": start, "end": end}
             commands.append(cmd)
     return commands
+
+
+def sync_timeline_subtitle(project_id: int, srt_content: str):
+    """Parse SRT content and populate subtitle clips in the timeline."""
+    import re
+    
+    # Simple SRT parser
+    pattern = re.compile(
+        r"(\d+)\s*\n(\d{2}:\d{2}:\d{2}[,\.]\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2}[,\.]\d{3})\s*\n(.*?)(?=\n\d+\s*\n|\Z)",
+        re.DOTALL
+    )
+    
+    def time_to_frames(t_str):
+        parts = re.split(r"[:,.]", t_str.replace(",", "."))
+        if len(parts) >= 4:
+            h, m, s, ms = int(parts[0]), int(parts[1]), int(parts[2]), int(parts[3])
+            seconds = h * 3600 + m * 60 + s + ms / 1000.0
+            return int(seconds * 30) # 30 fps
+        return 0
+
+    blocks = []
+    for match in pattern.finditer(srt_content):
+        start_f = time_to_frames(match.group(2))
+        end_f = time_to_frames(match.group(3))
+        text = match.group(4).strip().replace("\n", " ")
+        blocks.append({
+            "name": text[:30] + ("..." if len(text) > 30 else ""),
+            "start_frame": start_f,
+            "end_frame": end_f,
+            "position_frame": start_f
+        })
+        
+    with db_cursor() as cur:
+        # Find or create subtitle track
+        track = cur.execute(
+            "SELECT id FROM tracks WHERE project_id=? AND type='subtitle' LIMIT 1",
+            (project_id,)
+        ).fetchone()
+        if track:
+            track_id = track["id"]
+            # Clear old subtitle clips
+            cur.execute("DELETE FROM clips WHERE track_id=?", (track_id,))
+        else:
+            t = create_track(project_id, "subtitle", "Subtitle", index=1)
+            track_id = t["id"]
+            
+        # Insert clips
+        for b in blocks:
+            cur.execute(
+                """INSERT INTO clips (track_id, source_path, name, start_frame, end_frame, position_frame)
+                   VALUES (?,?,?,?,?,?)""",
+                (track_id, "", b["name"], b["start_frame"], b["end_frame"], b["position_frame"])
+            )
+            
+    save_timeline_to_file(project_id)
+

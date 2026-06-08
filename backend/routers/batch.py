@@ -10,7 +10,7 @@ router = APIRouter()
 def batch_download(data: dict, bg: BackgroundTasks):
     urls = data.get("urls", [])
     if not urls or not isinstance(urls, list):
-        raise HTTPException(400, "urls must be a non-empty list")
+        raise HTTPException(400, "urls phải là một danh sách không trống")
     items = []
     for url in urls:
         with db_cursor() as cur:
@@ -19,16 +19,16 @@ def batch_download(data: dict, bg: BackgroundTasks):
             dl_id = cur.lastrowid
         bg.add_task(download_video, dl_id, url, data.get("quality", "best"), data.get("cookie_file"), data.get("proxy"))
         items.append({"url": url, "id": dl_id})
-    return {"message": f"Queued {len(items)} downloads", "items": items}
+    return {"message": f"Đã đưa {len(items)} lượt tải về vào hàng đợi", "items": items}
 
 
 @router.post("/urls")
 def batch_urls(data: dict):
     urls = data.get("urls", [])
     if not urls:
-        raise HTTPException(400, "urls required")
+        raise HTTPException(400, "Yêu cầu cung cấp urls")
     item_ids = []
     for url in urls:
         item_id = add_queue_item(data.get("project_id", 0), "download", "", {"url": url, "quality": data.get("quality", "best")})
         item_ids.append(item_id)
-    return {"message": f"Queued {len(item_ids)} URLs", "ids": item_ids}
+    return {"message": f"Đã đưa {len(item_ids)} URL vào hàng đợi", "ids": item_ids}

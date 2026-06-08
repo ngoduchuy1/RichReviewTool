@@ -34,7 +34,8 @@ def download_video(dl_id: int, url: str, quality: str = "best", cookie_file: str
 
         process = subprocess.Popen(
             cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-            text=True, encoding="utf-8", errors="replace"
+            text=True, encoding="utf-8", errors="replace",
+            creationflags=subprocess.CREATE_NO_WINDOW
         )
 
         for line in process.stdout:

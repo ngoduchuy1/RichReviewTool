@@ -1,5 +1,8 @@
 import os
 import json
+import subprocess
+import sys
+from pathlib import Path
 from ..config import OPENAI_API_KEY, GEMINI_API_KEY
 from ..database import db_cursor
 import requests
@@ -14,7 +17,7 @@ def _is_translation_error(result: str) -> bool:
     return result.startswith(_TRANSLATION_ERROR_PREFIXES)
 
 
-def translate_text(text: str, source_lang: str = "zh", target_lang: str = "vi", engine: str = "gpt") -> str:
+def translate_text(text: str, source_lang: str = "zh", target_lang: str = "vi", engine: str = "nllb") -> str:
     if engine == "gpt":
         return _translate_gpt(text, source_lang, target_lang)
     elif engine == "gemini":
@@ -46,7 +49,7 @@ def get_job(job_id: str) -> dict:
         return dict(_JOBS.get(job_id, {}))
 
 
-def translate_srt(srt_content: str, source_lang: str = "zh", target_lang: str = "vi", engine: str = "gpt") -> str:
+def translate_srt(srt_content: str, source_lang: str = "zh", target_lang: str = "vi", engine: str = "nllb") -> str:
     """Blocking translate — used internally / by API models."""
     job_id = str(uuid.uuid4())
     _job_set(job_id, status="running", progress=0, result=None, error=None)
@@ -57,7 +60,7 @@ def translate_srt(srt_content: str, source_lang: str = "zh", target_lang: str = 
     return job.get("result") or ""
 
 
-def translate_srt_async(srt_content: str, source_lang: str = "zh", target_lang: str = "vi", engine: str = "gpt", project_id=None) -> str:
+def translate_srt_async(srt_content: str, source_lang: str = "zh", target_lang: str = "vi", engine: str = "nllb", project_id=None) -> str:
     """Async translate — starts a background thread, returns job_id immediately."""
     job_id = str(uuid.uuid4())
     _job_set(job_id, status="running", progress=0, result=None, error=None, project_id=project_id)
@@ -106,18 +109,21 @@ def _translate_srt_sync(job_id: str, srt_content: str, source_lang: str, target_
             for start in range(0, total, BATCH):
                 chunk = text_blocks[start:start + BATCH]
                 texts = [blk[2] for blk in chunk]
-                joined = "\n".join(t for t in texts if t)
+                joined = "\n".join(texts)
                 if joined.strip():
                     translated_joined = translate_text(joined, source_lang, target_lang, engine)
                     if _is_translation_error(translated_joined):
                         raise RuntimeError(translated_joined)
                     parts = translated_joined.split("\n")
-                    if len(parts) < len(chunk):
+                    # Handle misalignment: truncate extra lines, pad missing lines
+                    if len(parts) > len(chunk):
+                        parts = parts[:len(chunk)]
+                    elif len(parts) < len(chunk):
                         parts += [""] * (len(chunk) - len(parts))
                 else:
                     parts = [""] * len(chunk)
                 for (idx, time_line, _), translated in zip(chunk, parts):
-                    result_blocks.append(f"{idx}\n{time_line}\n{translated.strip()}\n")
+                    result_blocks.append(f"{idx}\n{time_line}\n{(translated or '').strip()}\n")
                 done += len(chunk)
                 pct = int(done / total * 100)
                 _job_set(job_id, progress=pct)
@@ -152,99 +158,95 @@ def _translate_srt_sync(job_id: str, srt_content: str, source_lang: str, target_
 
 
 
-_nllb_tokenizer = None
-_nllb_model = None
+def _find_system_python():
+    """Find system Python (not the PyInstaller EXE)."""
+    if getattr(sys, 'frozen', False):
+        candidates = [
+            os.path.join(os.path.dirname(sys.executable), "python.exe"),
+            r"C:\Program Files\Python312\python.exe",
+            r"C:\Python312\python.exe",
+        ]
+        for p in candidates:
+            if os.path.exists(p):
+                return p
+        for p in os.environ.get("PATH", "").split(os.pathsep):
+            candidate = os.path.join(p, "python.exe")
+            if os.path.exists(candidate):
+                return candidate
+    return sys.executable
 
-def _translate_nllb(text, src, tgt):
-    """Translate using Meta's NLLB-200 model (runs locally)."""
-    global _nllb_tokenizer, _nllb_model
-    lang_map = {
-        "vi": "vie_Latn", "en": "eng_Latn", "zh": "zho_Hans",
-        "ja": "jpn_Jpan", "ko": "kor_Hang", "th": "tha_Thai",
-        "fr": "fra_Latn", "de": "deu_Latn", "es": "spa_Latn",
-        "ru": "rus_Cyrl", "ar": "ara_Arab", "pt": "por_Latn",
-        "id": "ind_Latn", "ms": "zsm_Latn", "tl": "tgl_Latn",
-        "lo": "lao_Laoo", "km": "khm_Khmr", "my": "mya_Mymr",
-    }
-    src_code = lang_map.get(src, src)
-    tgt_code = lang_map.get(tgt, tgt)
+
+def _translate_worker_script():
+    if getattr(sys, 'frozen', False):
+        exe_dir = Path(sys.executable).resolve().parent
+        candidate = exe_dir / "backend" / "services" / "translate_worker.py"
+        if candidate.exists():
+            return candidate
+    return Path(__file__).parent / "translate_worker.py"
+
+
+# Persistent translate worker process
+_translate_proc = None
+_translate_proc_lock = threading.Lock()
+_translate_proc_engine = None
+
+
+def _get_translate_worker(engine: str):
+    """Get or create a persistent translate worker subprocess."""
+    global _translate_proc, _translate_proc_engine
+    with _translate_proc_lock:
+        if _translate_proc is not None and _translate_proc.poll() is not None:
+            _translate_proc = None
+        if _translate_proc is None or _translate_proc_engine != engine:
+            if _translate_proc is not None:
+                _translate_proc.stdin.close()
+                _translate_proc.wait(timeout=5)
+            python = _find_system_python()
+            script = _translate_worker_script()
+            if not script.exists():
+                return None
+            _translate_proc = subprocess.Popen(
+                [python, str(script)],
+                stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE, text=True,
+                creationflags=subprocess.CREATE_NO_WINDOW
+            )
+            _translate_proc_engine = engine
+            # Send first request to trigger model loading
+            _translate_proc.stdin.write(json.dumps({"engine": engine, "text": "", "src": "zh", "tgt": "vi"}) + "\n")
+            _translate_proc.stdin.flush()
+            _translate_proc.stdout.readline()  # discard warmup response
+        return _translate_proc
+
+
+def _call_translate_worker(engine: str, text: str, src: str, tgt: str) -> str:
+    """Send a translation request to the persistent worker subprocess."""
     try:
-        from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
-        import torch
-        # Ưu tiên load từ local cache đã tải sẵn, fallback về HF nếu không có
-        import os as _os
-        _local_path = _os.path.expanduser("~/.cache/nllb_manual")
-        model_name = _local_path if _os.path.isdir(_local_path) and _os.path.exists(_os.path.join(_local_path, "pytorch_model.bin")) else "facebook/nllb-200-distilled-600M"
-
-        if _nllb_model is None or _nllb_tokenizer is None:
-            device = "cuda" if torch.cuda.is_available() else "cpu"
-            _nllb_tokenizer = AutoTokenizer.from_pretrained(model_name)
-            _nllb_model = AutoModelForSeq2SeqLM.from_pretrained(model_name, low_cpu_mem_usage=True).to(device)
-            
-        device = next(_nllb_model.parameters()).device
-        _nllb_tokenizer.src_lang = src_code
-        tgt_token_id = _nllb_tokenizer.convert_tokens_to_ids(tgt_code)
-        
-        # Split into sentences and batch-translate for speed (max 32 at a time)
-        sentences = [s.strip() for s in text.split("\n") if s.strip()]
-        results = []
-        BATCH = 32
-        for i in range(0, len(sentences), BATCH):
-            batch = sentences[i:i+BATCH]
-            inputs = _nllb_tokenizer(
-                batch, return_tensors="pt", padding=True,
-                truncation=True, max_length=256
-            ).to(device)
-            with torch.no_grad():
-                outputs = _nllb_model.generate(
-                    **inputs,
-                    forced_bos_token_id=tgt_token_id,
-                    max_length=256,
-                    num_beams=2,
-                )
-            decoded = _nllb_tokenizer.batch_decode(outputs, skip_special_tokens=True)
-            results.extend(decoded)
-        return "\n".join(results)
-    except ImportError:
-        return f"[NLLB unavailable - install transformers]"
+        proc = _get_translate_worker(engine)
+        if proc is None:
+            return f"[NLLB unavailable - worker script not found]"
+        req = json.dumps({"engine": engine, "text": text, "src": src, "tgt": tgt})
+        proc.stdin.write(req + "\n")
+        proc.stdin.flush()
+        line = proc.stdout.readline()
+        if not line:
+            return "[NLLB error: worker process died]"
+        data = json.loads(line)
+        if data.get("error"):
+            return f"[NLLB error: {data['error']}]"
+        return data["result"]
     except Exception as e:
         return f"[NLLB error: {e}]"
 
 
-_marian_tokenizer = None
-_marian_model = None
-_marian_model_name = None
+def _translate_nllb(text, src, tgt):
+    """Translate using Meta's NLLB-200 model via persistent subprocess."""
+    return _call_translate_worker("nllb", text, src, tgt)
+
 
 def _translate_marian(text, src, tgt):
-    """Translate using Helsinki-NLP MarianMT (runs locally, lightweight)."""
-    global _marian_tokenizer, _marian_model, _marian_model_name
-    model_map = {
-        ("en", "vi"): "Helsinki-NLP/opus-mt-en-vi",
-        ("vi", "en"): "Helsinki-NLP/opus-mt-vi-en",
-        ("zh", "vi"): "Helsinki-NLP/opus-mt-zh-vi",
-    }
-    key = (src, tgt)
-    model_name = model_map.get(key)
-    if not model_name:
-        return f"[MarianMT: unsupported pair {src}->{tgt}]"
-    try:
-        from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
-        import torch
-        
-        if _marian_model is None or _marian_tokenizer is None or _marian_model_name != model_name:
-            device = "cuda" if torch.cuda.is_available() else "cpu"
-            _marian_tokenizer = AutoTokenizer.from_pretrained(model_name)
-            _marian_model = AutoModelForSeq2SeqLM.from_pretrained(model_name).to(device)
-            _marian_model_name = model_name
-            
-        device = next(_marian_model.parameters()).device
-        inputs = _marian_tokenizer(text, return_tensors="pt", truncation=True, max_length=512).to(device)
-        outputs = _marian_model.generate(**inputs, max_length=512)
-        return _marian_tokenizer.decode(outputs[0], skip_special_tokens=True)
-    except ImportError:
-        return f"[MarianMT unavailable - install transformers]"
-    except Exception as e:
-        return f"[MarianMT error: {e}]"
+    """Translate using Helsinki-NLP MarianMT via persistent subprocess."""
+    return _call_translate_worker("marian", text, src, tgt)
 
 
 def _translate_gpt(text, src, tgt):

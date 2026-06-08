@@ -43,7 +43,7 @@ async def queue_events(request: Request):
 @router.post("/clear-all")
 def clear():
     clear_all()
-    return {"message": "Queue cleared"}
+    return {"message": "Đã xóa sạch hàng đợi"}
 
 
 @router.post("/")
@@ -53,9 +53,9 @@ def create_queue_item(data: dict):
     input_path = data.get("input_path", "")
     params = data.get("params", {})
     if not project_id:
-        raise HTTPException(400, "project_id required")
+        raise HTTPException(400, "Yêu cầu cung cấp project_id")
     item_id = add_queue_item(project_id, ptype, input_path, params, data.get("priority", 0))
-    return {"id": item_id, "message": "Item queued"}
+    return {"id": item_id, "message": "Đã đưa phần tử vào hàng đợi"}
 
 
 @router.get("/")
@@ -84,25 +84,25 @@ def queue_stats():
 @router.post("/{item_id}/retry")
 def retry(item_id: int):
     retry_failed(item_id)
-    return {"message": "Retrying"}
+    return {"message": "Đang thử lại"}
 
 
 @router.post("/retry-all")
 def retry_all():
     retry_failed()
-    return {"message": "Retrying all failed"}
+    return {"message": "Đang thử lại tất cả tệp lỗi"}
 
 
 @router.post("/pause-all")
 def pause():
     count = pause_all()
-    return {"message": f"Paused {count} items"}
+    return {"message": f"Đã tạm dừng {count} phần tử"}
 
 
 @router.post("/resume-all")
 def resume():
     count = resume_all()
-    return {"message": f"Resumed {count} items"}
+    return {"message": f"Đã tiếp tục {count} phần tử"}
 
 
 @router.get("/logs")

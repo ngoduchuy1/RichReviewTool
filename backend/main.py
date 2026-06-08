@@ -39,12 +39,6 @@ async def lifespan(app: FastAPI):
     print(f"[Server] Database path: {DB_PATH}")
     print(f"[Server] Database exists: {DB_PATH.exists()}")
     
-    # Delete database file to clear all stale data
-    if DB_PATH.exists():
-        import os
-        os.remove(DB_PATH)
-        print(f"[Server] Deleted old database file: {DB_PATH}")
-    
     init_db()
     init_presets()
     
@@ -96,16 +90,20 @@ async def browse_system(type: str = "file", ext: str = ""):
     import tkinter as tk
     from tkinter import filedialog
     import asyncio
+    from .config import SUBTITLES_DIR
     
     def _open_dialog():
         root = tk.Tk()
         root.attributes("-topmost", True)
         root.withdraw()
         if type == "folder":
-            path = filedialog.askdirectory(parent=root)
+            path = filedialog.askdirectory(parent=root, initialdir=str(SUBTITLES_DIR))
+        elif ext == "srt":
+            path = filedialog.askopenfilename(parent=root, initialdir=str(SUBTITLES_DIR), filetypes=[("Subtitle files", "*.srt *.ass")])
+        elif ext == "video":
+            path = filedialog.askopenfilename(parent=root, filetypes=[("Video files", "*.mp4 *.mkv *.avi *.mov")])
         else:
-            filetypes = [("Subtitle/Video files", "*.srt *.ass *.mp4 *.mkv *.avi")] if ext in ["srt", "video"] else [("All files", "*.*")]
-            path = filedialog.askopenfilename(parent=root, filetypes=filetypes)
+            path = filedialog.askopenfilename(parent=root, filetypes=[("All files", "*.*")])
         root.destroy()
         return path
 
@@ -239,7 +237,7 @@ def save_settings(data: dict):
                 "INSERT INTO settings (key, value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
                 (key, str(value)),
             )
-    return {"message": "Settings saved"}
+    return {"message": "Đã lưu cài đặt"}
 
 
 @app.get("/api/video/serve")

@@ -16,7 +16,7 @@ def list_all():
 def get_one(name: str):
     t = get_template(name)
     if not t:
-        raise HTTPException(404, f"Template '{name}' not found")
+        raise HTTPException(404, f"Không tìm thấy template '{name}'")
     return t
 
 
@@ -27,7 +27,7 @@ def save(name: str = "", config: dict = None):
     if name:
         config["name"] = name
     if "name" not in config:
-        raise HTTPException(400, "Template name required")
+        raise HTTPException(400, "Yêu cầu cung cấp tên template")
     result = save_template(config)
     return result
 

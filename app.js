@@ -178,88 +178,88 @@ async function loadDashboard() {
 /* Sidebar feature flyout - Full Tree */
 const sidebarTree = {
   home: {
-    title: 'Home',
+    title: 'Trang chủ',
     tree: [
-      { icon: 'ri-dashboard-2-line', label: 'Dashboard' },
-      { icon: 'ri-history-line', label: 'Recent Projects' },
-      { icon: 'ri-bar-chart-2-line', label: 'Statistics' },
-      { label: 'Assets', icon: 'ri-archive-stack-line', children: [
+      { icon: 'ri-dashboard-2-line', label: 'Bảng điều khiển' },
+      { icon: 'ri-history-line', label: 'Dự án gần đây' },
+      { icon: 'ri-bar-chart-2-line', label: 'Thống kê' },
+      { label: 'Tài nguyên', icon: 'ri-archive-stack-line', children: [
         { label: 'Videos', children: [
-          { label: 'Raw' },
-          { label: 'Edited' },
-          { label: 'Exported' }
+          { label: 'Gốc' },
+          { label: 'Đã sửa' },
+          { label: 'Đã xuất' }
         ]},
-        { label: 'Audio', children: [
-          { label: 'Music' },
-          { label: 'Voice' },
-          { label: 'Effects' }
+        { label: 'Âm thanh', children: [
+          { label: 'Nhạc nền' },
+          { label: 'Giọng đọc' },
+          { label: 'Hiệu ứng' }
         ]},
-        { label: 'Subtitle', children: [
-          { label: 'Source' },
-          { label: 'Translate' }
+        { label: 'Phụ đề', children: [
+          { label: 'Nguồn' },
+          { label: 'Dịch thuật' }
         ]},
-        { label: 'Branding', children: [
-          { label: 'Logos' },
-          { label: 'Watermarks' },
+        { label: 'Nhãn hiệu', children: [
+          { label: 'Logo' },
+          { label: 'Hình mờ' },
           { label: 'QR' }
         ]},
-        { label: 'Templates' }
+        { label: 'Mẫu sẵn (Template)' }
       ]}
     ]
   },
   project: {
-    title: 'Project',
+    title: 'Dự án',
     tree: [
-      { icon: 'ri-add-box-line', label: 'Create' },
-      { icon: 'ri-folder-open-line', label: 'Open' },
-      { icon: 'ri-save-3-line', label: 'Save' },
-      { icon: 'ri-history-line', label: 'Version History' },
-      { icon: 'ri-cloud-line', label: 'Auto Backup' },
-      { icon: 'ri-layout-grid-line', label: 'Templates' },
-      { icon: 'ri-stack-line', label: 'Batch Project' }
+      { icon: 'ri-add-box-line', label: 'Tạo mới' },
+      { icon: 'ri-folder-open-line', label: 'Mở' },
+      { icon: 'ri-save-3-line', label: 'Lưu' },
+      { icon: 'ri-history-line', label: 'Lịch sử phiên bản' },
+      { icon: 'ri-cloud-line', label: 'Sao lưu tự động' },
+      { icon: 'ri-layout-grid-line', label: 'Template' },
+      { icon: 'ri-stack-line', label: 'Dự án hàng loạt' }
     ]
   },
   download: {
-    title: 'Download',
+    title: 'Tải về',
     tree: [
       { icon: 'ri-youtube-line', label: 'YouTube' },
       { icon: 'ri-tiktok-line', label: 'TikTok' },
       { icon: 'ri-video-line', label: 'Douyin' },
       { icon: 'ri-facebook-line', label: 'Facebook' },
       { icon: 'ri-instagram-line', label: 'Instagram' },
-      { icon: 'ri-play-list-line', label: 'Playlist' },
-      { icon: 'ri-cookie-line', label: 'Cookie Manager' },
-      { icon: 'ri-global-line', label: 'Proxy Manager' },
-      { icon: 'ri-link-m', label: 'Batch URL' }
+      { icon: 'ri-play-list-line', label: 'Danh sách phát' },
+      { icon: 'ri-cookie-line', label: 'Quản lý Cookie' },
+      { icon: 'ri-global-line', label: 'Quản lý Proxy' },
+      { icon: 'ri-link-m', label: 'URL hàng loạt' }
     ]
   },
   subtitle: {
-    title: 'Subtitle',
+    title: 'Phụ đề',
     tree: [
-      { label: 'Import', icon: 'ri-upload-cloud-2-line', children: [
+      { label: 'Nhập phụ đề', icon: 'ri-upload-cloud-2-line', children: [
         { label: 'SRT' },
         { label: 'ASS' },
-        { label: 'Merge' }
+        { label: 'Ghép phụ đề' }
       ]},
-      { label: 'Translate', icon: 'ri-translate-2', children: [
+      { label: 'Dịch thuật', icon: 'ri-translate-2', children: [
         { label: 'GPT' },
         { label: 'Gemini' },
-        { label: 'Batch' }
+        { label: 'Dịch hàng loạt' }
       ]},
-      { label: 'Style', icon: 'ri-font-size', children: [
-        { label: 'Font' },
-        { label: 'Color' },
-        { label: 'Shadow' }
+      { label: 'Kiểu dáng', icon: 'ri-font-size', children: [
+        { label: 'Font chữ' },
+        { label: 'Màu sắc' },
+        { label: 'Đổ bóng' }
       ]},
-      { label: 'Export', icon: 'ri-download-2-line', children: [
-        { label: 'Burn' },
+      { label: 'Xuất phụ đề', icon: 'ri-download-2-line', children: [
+        { label: 'Gắn cứng' },
         { label: 'SRT' },
         { label: 'ASS' }
       ]}
     ]
   },
   voice: {
-    title: 'Voice',
+    title: 'Giọng đọc',
     tree: [
       { label: 'TTS', icon: 'ri-mic-2-line', children: [
         { label: 'Google' },
@@ -267,45 +267,45 @@ const sidebarTree = {
         { label: 'ElevenLabs' },
         { label: 'EdgeTTS' }
       ]},
-      { label: 'Voice Clone', icon: 'ri-user-voice-line', children: [
-        { label: 'Upload Sample' },
-        { label: 'Train Voice' },
-        { label: 'Export Voice' }
+      { label: 'Nhân bản giọng nói', icon: 'ri-user-voice-line', children: [
+        { label: 'Tải lên mẫu' },
+        { label: 'Huấn luyện' },
+        { label: 'Xuất giọng nói' }
       ]},
-      { label: 'Multi Speaker', icon: 'ri-team-line', children: [
-        { label: 'Speaker Mapping' },
-        { label: 'Auto Detect' }
+      { label: 'Đa giọng đọc', icon: 'ri-team-line', children: [
+        { label: 'Ánh xạ giọng đọc' },
+        { label: 'Tự động nhận diện' }
       ]},
-      { label: 'Voice Library', icon: 'ri-voiceprint-line' }
+      { label: 'Thư viện giọng đọc', icon: 'ri-voiceprint-line' }
     ]
   },
   ai: {
-    title: 'AI',
+    title: 'Trí tuệ nhân tạo (AI)',
     tree: [
-      { icon: 'ri-scissors-cut-line', label: 'Scene Detection' },
-      { icon: 'ri-file-text-line', label: 'Auto Summary' },
-      { icon: 'ri-film-line', label: 'Auto Recap' },
-      { icon: 'ri-user-smile-line', label: 'Character Detection' },
-      { icon: 'ri-voiceprint-line', label: 'Speaker Detection' },
-      { icon: 'ri-image-line', label: 'Thumbnail Generator' },
-      { icon: 'ri-font-size', label: 'Title Generator' },
-      { icon: 'ri-hashtag-line', label: 'Hashtag Generator' },
-      { icon: 'ri-bubble-chart-line', label: 'Prompt Library' }
+      { icon: 'ri-scissors-cut-line', label: 'Tách phân cảnh' },
+      { icon: 'ri-file-text-line', label: 'Tóm tắt tự động' },
+      { icon: 'ri-film-line', label: 'Review phim tự động' },
+      { icon: 'ri-user-smile-line', label: 'Nhận diện nhân vật' },
+      { icon: 'ri-voiceprint-line', label: 'Nhận diện người nói' },
+      // { icon: 'ri-image-line', label: 'Tạo ảnh bìa' },
+      { icon: 'ri-font-size', label: 'Tạo tiêu đề' },
+      { icon: 'ri-hashtag-line', label: 'Tạo Hashtag' },
+      { icon: 'ri-bubble-chart-line', label: 'Thư viện câu lệnh' }
     ]
   },
   export: {
-    title: 'Export',
+    title: 'Xuất bản',
     tree: [
-      { icon: 'ri-movie-2-line', label: 'Render' },
-      { icon: 'ri-list-check-3', label: 'Queue' },
-      { icon: 'ri-equalizer-line', label: 'Presets' },
-      { icon: 'ri-upload-cloud-2-line', label: 'Upload' },
+      { icon: 'ri-movie-2-line', label: 'Kết xuất' },
+      { icon: 'ri-list-check-3', label: 'Hàng chờ' },
+      { icon: 'ri-equalizer-line', label: 'Mẫu thiết lập' },
+      { icon: 'ri-upload-cloud-2-line', label: 'Tải lên' },
       { label: 'Video', icon: 'ri-video-line', children: [
         { label: 'MP4' },
         { label: 'MKV' },
         { label: 'MOV' }
       ]},
-      { label: 'Codec', icon: 'ri-cpu-line', children: [
+      { label: 'Mã hóa (Codec)', icon: 'ri-cpu-line', children: [
         { label: 'H264' },
         { label: 'H265' },
         { label: 'AV1' }
@@ -315,7 +315,7 @@ const sidebarTree = {
         { label: 'AMD' },
         { label: 'CPU' }
       ]},
-      { label: 'Publish', icon: 'ri-share-line', children: [
+      { label: 'Đăng tải', icon: 'ri-share-line', children: [
         { label: 'YouTube' },
         { label: 'TikTok' },
         { label: 'Facebook' }
@@ -323,29 +323,29 @@ const sidebarTree = {
     ]
   },
   queue: {
-    title: 'Queue',
+    title: 'Hàng chờ',
     tree: [
-      { icon: 'ri-play-circle-line', label: 'Running' },
-      { icon: 'ri-time-line', label: 'Waiting' },
-      { icon: 'ri-checkbox-circle-line', label: 'Completed' },
-      { icon: 'ri-close-circle-line', label: 'Failed' },
-      { icon: 'ri-refresh-line', label: 'Retry Failed' },
-      { icon: 'ri-pause-line', label: 'Pause All' },
-      { icon: 'ri-play-line', label: 'Resume All' },
-      { icon: 'ri-arrow-up-line', label: 'Priority' }
+      { icon: 'ri-play-circle-line', label: 'Đang chạy' },
+      { icon: 'ri-time-line', label: 'Đang chờ' },
+      { icon: 'ri-checkbox-circle-line', label: 'Đã hoàn thành' },
+      { icon: 'ri-close-circle-line', label: 'Thất bại' },
+      { icon: 'ri-refresh-line', label: 'Thử lại tệp lỗi' },
+      { icon: 'ri-pause-line', label: 'Tạm dừng tất cả' },
+      { icon: 'ri-play-line', label: 'Tiếp tục tất cả' },
+      { icon: 'ri-arrow-up-line', label: 'Độ ưu tiên' }
     ]
   },
   settings: {
-    title: 'Settings',
+    title: 'Cài đặt',
     tree: [
-      { icon: 'ri-settings-4-line', label: 'General' },
+      { icon: 'ri-settings-4-line', label: 'Chung' },
       { icon: 'ri-key-2-line', label: 'API Keys' },
-      { icon: 'ri-sparkling-line', label: 'AI Model' },
+      { icon: 'ri-sparkling-line', label: 'Mô hình AI' },
       { icon: 'ri-cpu-line', label: 'GPU' },
       { icon: 'ri-terminal-box-line', label: 'FFmpeg' },
       { icon: 'ri-global-line', label: 'Proxy' },
-      { icon: 'ri-refresh-line', label: 'Updates' },
-      { icon: 'ri-information-line', label: 'About' }
+      { icon: 'ri-refresh-line', label: 'Cập nhật' },
+      { icon: 'ri-information-line', label: 'Giới thiệu' }
     ]
   }
 };
@@ -490,39 +490,49 @@ document.getElementById('btn-browse-output')?.addEventListener('click', async ()
 
 document.getElementById('btn-load')?.addEventListener('click', async () => {
   const srtPath = document.getElementById('inp-srt-path')?.value;
-  if (!srtPath) return;
+  const videoPath = document.getElementById('inp-video-path')?.value;
+  const preset = document.getElementById('sel-project-preset')?.value || 'Movie Review';
 
   const loadProgress = document.getElementById('load-progress');
   const loadPct = document.getElementById('load-pct');
   if (loadProgress) loadProgress.style.width = '10%';
   if (loadPct) loadPct.textContent = '10%';
 
-  const project = await apiPost('/projects', {
-    name: 'project_' + Date.now(),
-    preset: document.getElementById('sel-project-preset')?.value || 'Movie Review',
-  });
-  if (project) {
+  try {
+    // 1. Create project
+    const project = await apiPost('/projects', {
+      name: 'project_' + Date.now(),
+      preset: preset,
+    });
+    if (!project) throw new Error('Không thể tạo dự án');
     currentProjectId = project.id;
-    setTimeout(() => loadTimeline(currentProjectId), 500);
-  }
+    
+    if (loadProgress) loadProgress.style.width = '35%';
+    if (loadPct) loadPct.textContent = '35%';
 
-  if (srtPath.endsWith('.srt') || srtPath.endsWith('.ass')) {
-    try {
-      const res = await apiPost('/subtitle/import-path', { path: srtPath, project_id: currentProjectId || 0 });
-      if (res) {
-        if (loadProgress) loadProgress.style.width = '100%';
-        if (loadPct) loadPct.textContent = '100%';
-      } else {
-        if (loadProgress) loadProgress.style.width = '0%';
-        if (loadPct) loadPct.textContent = '0%';
-      }
-    } catch (e) {
-      if (loadProgress) loadProgress.style.width = '0%';
-      if (loadPct) loadPct.textContent = '0%';
+    // 2. Sync video if exists
+    if (videoPath) {
+      await apiPost(`/timeline/${currentProjectId}/video`, { path: videoPath });
     }
-  } else {
+    
+    if (loadProgress) loadProgress.style.width = '65%';
+    if (loadPct) loadPct.textContent = '65%';
+
+    // 3. Import subtitle if exists
+    if (srtPath) {
+      await apiPost('/subtitle/import-path', { path: srtPath, project_id: currentProjectId });
+    }
+
     if (loadProgress) loadProgress.style.width = '100%';
     if (loadPct) loadPct.textContent = '100%';
+
+    // 4. Load the populated timeline
+    await loadTimeline(currentProjectId);
+  } catch (e) {
+    console.error('[Load] Error loading project data:', e);
+    if (loadProgress) loadProgress.style.width = '0%';
+    if (loadPct) loadPct.textContent = '0%';
+    alert('Lỗi khi load dữ liệu: ' + (e.message || e));
   }
 });
 
@@ -555,9 +565,11 @@ executeBtn.addEventListener('click', async () => {
   const params = {
     source_lang: LANG_MAP_EXEC[selFrom] || 'en',
     target_lang: LANG_MAP_EXEC[selTo] || 'vi',
-    translate_engine: 'gpt',
-    tts_provider: document.getElementById('sel-tts-provider')?.value?.toLowerCase().replace(' tts', '').replace(' (free)', '') || 'edge',
-    tts_voice: document.getElementById('sel-voice-type')?.value === 'Nam' ? 'vi-VN-NamMinhNeural' : 'vi-VN-HoaiMyNeural',
+    translate_engine: 'nllb',
+    tts_provider: document.getElementById('sel-tts-provider')?.value === 'FPT.AI TTS' ? 'fpt' : (document.getElementById('sel-tts-provider')?.value?.toLowerCase().replace(' tts', '').replace(' (free)', '') || 'edge'),
+    tts_voice: document.getElementById('sel-voice-type')?.value || 'vi-VN-HoaiMyNeural',
+    tts_align: document.getElementById('chk-tts-align')?.checked ?? true,
+    fpt_api_key: document.getElementById('inp-fpt-key')?.value || undefined,
     burn_subtitle: document.querySelector('#tab-subtitle .custom-checkbox input')?.checked ?? true,
     output_name: inputName,
     output_dir: document.getElementById('inp-output-path')?.value || undefined,
@@ -693,7 +705,7 @@ document.getElementById('btn-save-preset')?.addEventListener('click', async () =
 /* ─── Scene Detect ─── */
 document.getElementById('btn-detect-scenes')?.addEventListener('click', async () => {
   const btn = document.getElementById('btn-detect-scenes');
-  btn.textContent = '⏳ Detecting...';
+  btn.textContent = '⏳ Đang phân tích...';
   btn.disabled = true;
   const videoPath = document.getElementById('inp-video-path')?.value || document.getElementById('inp-srt-path')?.value || '';
   if (videoPath) {
@@ -704,7 +716,7 @@ document.getElementById('btn-detect-scenes')?.addEventListener('click', async ()
     });
   }
   setTimeout(() => {
-    btn.innerHTML = '<i class="ri-scissors-cut-line"></i> Detect';
+    btn.innerHTML = '<i class="ri-scissors-cut-line"></i> Phân tích';
     btn.disabled = false;
   }, 2000);
 });
@@ -880,7 +892,7 @@ function escapeHtml(text) {
 
 function renderLogEntries(entries) {
   if (!entries || entries.length === 0) {
-    return '<div class="log-placeholder">No logs found.</div>';
+    return '<div class="log-placeholder">Không tìm thấy bản ghi log nào.</div>';
   }
   return entries.map(e => {
     const cls = `log-level ${e.level || 'info'}`;
@@ -923,11 +935,11 @@ async function fetchLogs() {
     allLogs = allLogs.filter(l => l.level === filterLevel);
   }
 
-  if (logCount) logCount.textContent = `${allLogs.length} logs`;
+  if (logCount) logCount.textContent = `${allLogs.length} bản ghi`;
   if (!logContainer) return;
 
   if (allLogs.length === 0) {
-    logContainer.innerHTML = '<div class="log-placeholder">No logs found.</div>';
+    logContainer.innerHTML = '<div class="log-placeholder">Không tìm thấy bản ghi log nào.</div>';
     return;
   }
 
@@ -956,7 +968,7 @@ document.getElementById('btn-log-copy')?.addEventListener('click', () => {
   navigator.clipboard.writeText(text).then(() => {
     const btn = document.getElementById('btn-log-copy');
     const orig = btn.innerHTML;
-    btn.innerHTML = '<i class="ri-check-line"></i> Copied';
+    btn.innerHTML = '<i class="ri-check-line"></i> Đã sao chép';
     setTimeout(() => btn.innerHTML = orig, 1500);
   }).catch(() => {
     // fallback
@@ -979,17 +991,27 @@ const navToTabMap = {
 
 const sidebarActionMap = {
   'cookie manager': { type: 'modal', target: 'settings-modal' },
+  'quản lý cookie': { type: 'modal', target: 'settings-modal' },
   'proxy manager': { type: 'modal', target: 'settings-modal' },
+  'quản lý proxy': { type: 'modal', target: 'settings-modal' },
   'batch url': { type: 'modal', target: 'download-modal' },
+  'url hàng loạt': { type: 'modal', target: 'download-modal' },
   'version history': { type: 'modal', target: 'version-modal' },
+  'lịch sử phiên bản': { type: 'modal', target: 'version-modal' },
   'auto backup': { type: 'function', fn: 'toggleAutoBackup' },
+  'sao lưu tự động': { type: 'function', fn: 'toggleAutoBackup' },
   'templates': { type: 'function', fn: 'openTemplates' },
+  'template': { type: 'function', fn: 'openTemplates' },
+  'mẫu sẵn (template)': { type: 'function', fn: 'openTemplates' },
 };
 
 const projectActionMap = {
   'create': { type: 'function', fn: 'createProject' },
+  'tạo mới': { type: 'function', fn: 'createProject' },
   'open': { type: 'function', fn: 'openProject' },
+  'mở': { type: 'function', fn: 'openProject' },
   'save': { type: 'function', fn: 'saveProject' },
+  'lưu': { type: 'function', fn: 'saveProject' },
 };
 
 sidebarFlyout?.addEventListener('click', (e) => {
@@ -1017,13 +1039,13 @@ sidebarFlyout?.addEventListener('click', (e) => {
   if (projectActionMap[leafLabel]) {
     const action = projectActionMap[leafLabel];
     if (action.fn === 'createProject') {
-      const name = prompt('Project name:', 'project_' + Date.now());
+      const name = prompt('Tên dự án:', 'project_' + Date.now());
       if (name) apiPost('/projects', { name, preset: document.getElementById('sel-project-preset')?.value || 'Movie Review' }).then(p => {
-        if (p) { currentProjectId = p.id; alert(`Project created: ${name} (ID: ${p.id})`); }
+        if (p) { currentProjectId = p.id; alert(`Đã tạo dự án: ${name} (ID: ${p.id})`); }
       });
     } else if (action.fn === 'saveProject') {
-      if (currentProjectId) apiPost(`/projects/${currentProjectId}/save`).then(r => alert(r?.message || 'Saved'));
-      else alert('No active project');
+      if (currentProjectId) apiPost(`/projects/${currentProjectId}/save`).then(r => alert(r?.message || 'Đã lưu'));
+      else alert('Không có dự án nào đang hoạt động');
     }
     return;
   }
@@ -1040,7 +1062,7 @@ sidebarFlyout?.addEventListener('click', (e) => {
 /* ═══════════════ AI PANEL HANDLERS ═══════════════ */
 document.getElementById('btn-ai-detect-scenes')?.addEventListener('click', async () => {
   const btn = document.getElementById('btn-ai-detect-scenes');
-  btn.textContent = '⏳ Detecting...';
+  btn.textContent = '⏳ Đang quét...';
   btn.disabled = true;
   const videoPath = document.getElementById('inp-video-path')?.value || document.getElementById('inp-srt-path')?.value || '';
   if (videoPath) {
@@ -1051,7 +1073,7 @@ document.getElementById('btn-ai-detect-scenes')?.addEventListener('click', async
     });
   }
   setTimeout(() => {
-    btn.innerHTML = '<i class="ri-scissors-cut-line"></i> Detect';
+    btn.innerHTML = '<i class="ri-scissors-cut-line"></i> Phân tích';
     btn.disabled = false;
   }, 2000);
 });
@@ -1068,14 +1090,14 @@ document.getElementById('btn-ai-summary')?.addEventListener('click', async () =>
     el.textContent = result.summary;
     el.style.color = 'var(--text)';
   } else {
-    el.textContent = 'Fallback: Summary generation unavailable (API key may be required)';
+    el.textContent = 'Dự phòng: Không thể tạo tóm tắt (Có thể yêu cầu API key)';
     el.style.color = 'var(--yellow-warn)';
   }
 });
 
 document.getElementById('btn-ai-recap')?.addEventListener('click', async () => {
   const btn = document.getElementById('btn-ai-recap');
-  btn.textContent = '⏳ Generating...';
+  btn.textContent = '⏳ Đang tạo...';
   btn.disabled = true;
   const result = await apiPost('/ai/recap', { project_id: currentProjectId || 1 });
   const el = document.getElementById('ai-recap-result');
@@ -1083,10 +1105,10 @@ document.getElementById('btn-ai-recap')?.addEventListener('click', async () => {
     el.textContent = result.recap;
     el.style.color = 'var(--text)';
   } else {
-    el.textContent = 'Fallback: Recap will be generated when video is loaded';
+    el.textContent = 'Dự phòng: Tóm tắt nội dung phim sẽ được tạo khi video được tải';
     el.style.color = 'var(--text-muted)';
   }
-  btn.innerHTML = '<i class="ri-film-line"></i> Generate Recap';
+  btn.innerHTML = '<i class="ri-film-line"></i> Tạo tóm tắt phim';
   btn.disabled = false;
 });
 
@@ -1097,7 +1119,7 @@ document.getElementById('btn-ai-characters')?.addEventListener('click', async ()
     el.textContent = result.characters.join(', ');
     el.style.color = 'var(--text)';
   } else {
-    el.textContent = 'Fallback: Character detection requires video with faces';
+    el.textContent = 'Dự phòng: Nhận diện nhân vật yêu cầu video có khuôn mặt';
     el.style.color = 'var(--text-muted)';
   }
 });
@@ -1109,19 +1131,12 @@ document.getElementById('btn-ai-speakers')?.addEventListener('click', async () =
     el.textContent = Object.entries(result.speakers).map(([k, v]) => `${k}: ${v}`).join(' | ');
     el.style.color = 'var(--text)';
   } else {
-    el.textContent = 'Fallback: Speaker detection will process after transcription';
+    el.textContent = 'Dự phòng: Nhận diện người nói sẽ được xử lý sau khi chuyển âm';
     el.style.color = 'var(--text-muted)';
   }
 });
 
-document.getElementById('btn-ai-thumbnail')?.addEventListener('click', async () => {
-  const result = await apiPost('/ai/thumbnail', { project_id: currentProjectId || 1 });
-  if (result && result.thumbnail_url) {
-    const el = document.getElementById('ai-characters-result');
-    el.innerHTML = `<img src="${result.thumbnail_url}" style="max-width:100%;border-radius:2px" />`;
-    el.style.color = 'var(--text)';
-  }
-});
+// document.getElementById('btn-ai-thumbnail')?.addEventListener('click', ...);
 
 document.getElementById('btn-ai-title')?.addEventListener('click', async () => {
   const result = await apiPost('/ai/title', { project_id: currentProjectId || 1 });
@@ -1130,7 +1145,7 @@ document.getElementById('btn-ai-title')?.addEventListener('click', async () => {
     el.innerHTML = result.titles.map(t => `<div>• ${t}</div>`).join('');
     el.style.color = 'var(--text)';
   } else {
-    el.textContent = 'Fallback: Title generation will be available after transcription';
+    el.textContent = 'Dự phòng: Tạo tiêu đề sẽ khả dụng sau khi chuyển âm';
     el.style.color = 'var(--text-muted)';
   }
 });
@@ -1142,14 +1157,14 @@ document.getElementById('btn-ai-hashtag')?.addEventListener('click', async () =>
     el.innerHTML = result.hashtags.map(h => `<span style="display:inline-block;background:var(--bg-input);padding:1px 6px;border-radius:2px;margin:1px">#${h}</span>`).join(' ');
     el.style.color = 'var(--text)';
   } else {
-    el.textContent = 'Fallback: Hashtag generation will be available after transcription';
+    el.textContent = 'Dự phòng: Tạo hashtag sẽ khả dụng sau khi chuyển âm';
     el.style.color = 'var(--text-muted)';
   }
 });
 
 document.getElementById('btn-ai-prompt')?.addEventListener('click', () => {
   const el = document.getElementById('ai-speakers-result');
-  el.textContent = 'Prompt Library: Use AI-powered prompts for creative video editing. Coming soon.';
+  el.textContent = 'Thư viện Prompt: Sử dụng các câu lệnh hỗ trợ bởi AI để chỉnh sửa video sáng tạo. Sắp ra mắt.';
   el.style.color = 'var(--text-muted)';
 });
 
@@ -1245,11 +1260,11 @@ document.getElementById('btn-voice-upload')?.addEventListener('click', async () 
 
 document.getElementById('btn-voice-train')?.addEventListener('click', async () => {
   const btn = document.getElementById('btn-voice-train');
-  btn.textContent = '⏳ Training...';
+  btn.textContent = '⏳ Đang huấn luyện...';
   btn.disabled = true;
   await apiPost('/voice/clone/train', { project_id: currentProjectId || 1 });
   setTimeout(() => {
-    btn.innerHTML = '<i class="ri-user-voice-line"></i> Train Voice';
+    btn.innerHTML = '<i class="ri-user-voice-line"></i> Huấn luyện Giọng đọc';
     btn.disabled = false;
   }, 3000);
 });
@@ -1266,9 +1281,9 @@ document.getElementById('btn-voice-export-clone')?.addEventListener('click', asy
 document.getElementById('btn-voice-speakers')?.addEventListener('click', async () => {
   const result = await apiPost('/ai/speakers', { project_id: currentProjectId || 1 });
   if (result && result.speakers) {
-    alert('Speakers detected: ' + Object.keys(result.speakers).join(', '));
+    alert('Đã phát hiện người nói: ' + Object.keys(result.speakers).join(', '));
   } else {
-    alert('Speaker detection will run after transcription.');
+    alert('Nhận diện người nói sẽ chạy sau khi chuyển âm.');
   }
 });
 
@@ -1310,10 +1325,10 @@ async function loadTimeline(projectId) {
   const tracksContainer = document.querySelector('.tracks-container');
   if (!tracksContainer) return;
   const trackTypes = [
-    { type: 'video', icon: 'ri-film-line', label: 'Video' },
-    { type: 'subtitle', icon: 'ri-closed-captioning-line', label: 'Sub' },
-    { type: 'voice', icon: 'ri-mic-line', label: 'Voice' },
-    { type: 'music', icon: 'ri-music-2-line', label: 'Music' },
+    { type: 'video', icon: 'ri-film-line', label: 'Video 1', clipClass: 'track-clip' },
+    { type: 'subtitle', icon: 'ri-closed-captioning-line', label: 'Subtitle', clipClass: 'track-clip music-clip' },
+    { type: 'voice', icon: 'ri-mic-line', label: 'Voice', clipClass: 'track-clip voice-clip' },
+    { type: 'music', icon: 'ri-music-2-line', label: 'Audio 1', clipClass: 'track-clip subtitle-clip' },
   ];
   const totalFrames = Math.max(
     ...(data.tracks || []).flatMap(t => (t.clips || []).map(c => c.end_frame || 0)),
@@ -1325,8 +1340,7 @@ async function loadTimeline(projectId) {
       ? (track.clips || []).map(c => {
           const w = totalFrames > 0 ? ((c.end_frame - c.start_frame) / totalFrames * 100) : 0;
           const l = totalFrames > 0 ? ((c.position_frame || 0) / totalFrames * 100) : 0;
-          const clipClass = ti === 1 ? 'track-clip subtitle-clip' : ti === 2 ? 'track-clip voice-clip' : ti === 3 ? 'track-clip music-clip' : 'track-clip';
-          return `<div class="${clipClass}" style="width:${Math.max(w, 5)}%;left:${l}%">${c.name || 'Clip'}</div>`;
+          return `<div class="${tt.clipClass}" style="width:${Math.max(w, 5)}%;left:${l}%" title="${escapeHtml(c.name || '')}">${escapeHtml(c.name || 'Clip')}</div>`;
         }).join('')
       : '<span class="track-lane-empty">—</span>';
     return `
@@ -1345,6 +1359,7 @@ async function loadTimeline(projectId) {
   }
   setTimeout(makeTimelineInteractive, 100);
 }
+
 
 /* ═══════════════ MUSIC TAB HANDLERS ═══════════════ */
 document.getElementById('btn-music-apply')?.addEventListener('click', async () => {
@@ -1407,9 +1422,9 @@ document.getElementById('btn-edit-flip')?.addEventListener('click', async () => 
 });
 
 document.getElementById('btn-edit-split')?.addEventListener('click', async () => {
-  const start = prompt('Start time (seconds):', '0');
+  const start = prompt('Thời gian bắt đầu (giây):', '0');
   if (start === null) return;
-  const end = prompt('End time (seconds):', '10');
+  const end = prompt('Thời gian kết thúc (giây):', '10');
   if (end === null) return;
   await apiPost('/edit/split', {
     video_path: document.getElementById('inp-video-path')?.value || document.getElementById('inp-srt-path')?.value || '',
@@ -1419,7 +1434,7 @@ document.getElementById('btn-edit-split')?.addEventListener('click', async () =>
 });
 
 document.getElementById('btn-edit-merge')?.addEventListener('click', async () => {
-  const inp = prompt('Enter video paths (comma-separated):', '');
+  const inp = prompt('Nhập đường dẫn các video (phân cách bằng dấu phẩy):', '');
   if (!inp) return;
   const paths = inp.split(',').map(p => p.trim()).filter(Boolean);
   if (paths.length < 2) return;
@@ -1446,13 +1461,62 @@ async function getSubtitleText() {
   return '';
 }
 
+document.getElementById('btn-sub-transcribe')?.addEventListener('click', async () => {
+  const btn = document.getElementById('btn-sub-transcribe');
+  const videoPath = document.getElementById('inp-video-path')?.value || '';
+  if (!videoPath) {
+    alert('Vui lòng chọn tệp video ở phần "LOAD DỮ LIỆU (BƯỚC 1)" trước!');
+    return;
+  }
+
+  btn.disabled = true;
+  const oldText = btn.innerHTML;
+  btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Đang nhận diện...';
+
+  try {
+    if (!currentProjectId) {
+      const project = await apiPost('/projects', {
+        name: 'project_' + Date.now(),
+        preset: document.getElementById('sel-project-preset')?.value || 'Movie Review',
+      });
+      if (project) {
+        currentProjectId = project.id;
+        setTimeout(() => loadTimeline(currentProjectId), 500);
+      }
+    }
+
+    const lang = document.getElementById('sel-sub-transcribe-lang')?.value || 'vi';
+
+    const res = await apiPost('/queue', {
+      project_id: currentProjectId || 1,
+      type: 'transcribe',
+      input_path: videoPath,
+      params: {
+        language: lang
+      }
+    });
+
+    if (res && res.id) {
+      alert('Đã thêm tiến trình nhận dạng phụ đề gốc (Whisper STT) vào hàng chờ thành công!');
+      addTaskRow();
+    } else {
+      alert('Tạo tiến trình hàng chờ thất bại.');
+    }
+  } catch (e) {
+    alert('Lỗi nhận dạng phụ đề: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = oldText;
+  }
+});
+
 document.getElementById('btn-sub-trans-gpt')?.addEventListener('click', async () => {
   const btn = document.getElementById('btn-sub-trans-gpt');
   const text = await getSubtitleText();
-  if (!text) { alert('No subtitle loaded.'); return; }
+  if (!text) { alert('Chưa tải phụ đề.'); return; }
   btn.disabled = true;
   const oldText = btn.innerHTML;
-  btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Translating...';
+  btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Đang dịch...';
   try {
     await apiPost('/subtitle/translate', {
       text, engine: 'gpt',
@@ -1461,7 +1525,7 @@ document.getElementById('btn-sub-trans-gpt')?.addEventListener('click', async ()
     });
     addTaskRow();
   } catch (e) {
-    alert('GPT translation failed: ' + e.message);
+    alert('Dịch bằng GPT thất bại: ' + e.message);
   } finally {
     btn.disabled = false;
     btn.innerHTML = oldText;
@@ -1471,10 +1535,10 @@ document.getElementById('btn-sub-trans-gpt')?.addEventListener('click', async ()
 document.getElementById('btn-sub-trans-gemini')?.addEventListener('click', async () => {
   const btn = document.getElementById('btn-sub-trans-gemini');
   const text = await getSubtitleText();
-  if (!text) { alert('No subtitle loaded.'); return; }
+  if (!text) { alert('Chưa tải phụ đề.'); return; }
   btn.disabled = true;
   const oldText = btn.innerHTML;
-  btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Translating...';
+  btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Đang dịch...';
   try {
     await apiPost('/subtitle/translate', {
       text, engine: 'gemini',
@@ -1483,7 +1547,7 @@ document.getElementById('btn-sub-trans-gemini')?.addEventListener('click', async
     });
     addTaskRow();
   } catch (e) {
-    alert('Gemini translation failed: ' + e.message);
+    alert('Dịch bằng Gemini thất bại: ' + e.message);
   } finally {
     btn.disabled = false;
     btn.innerHTML = oldText;
@@ -1506,7 +1570,7 @@ document.getElementById('btn-trans-copy')?.addEventListener('click', () => {
   navigator.clipboard.writeText(transResultText.value).then(() => {
     const btn = document.getElementById('btn-trans-copy');
     const orig = btn.innerHTML;
-    btn.innerHTML = '<i class="ri-check-line"></i> Copied';
+    btn.innerHTML = '<i class="ri-check-line"></i> Đã sao chép';
     setTimeout(() => btn.innerHTML = orig, 1500);
   });
 });
@@ -1636,7 +1700,7 @@ document.getElementById('btn-sub-trans-nllb')?.addEventListener('click', async (
     });
 
   } catch (e) {
-    alert('NLLB translation failed: ' + e.message);
+    alert('Dịch bằng NLLB thất bại: ' + e.message);
   } finally {
     clearInterval(timerInterval);
     btn.disabled = false;
@@ -1647,10 +1711,10 @@ document.getElementById('btn-sub-trans-nllb')?.addEventListener('click', async (
 document.getElementById('btn-sub-trans-marian')?.addEventListener('click', async () => {
   const btn = document.getElementById('btn-sub-trans-marian');
   const text = await getSubtitleText();
-  if (!text) { alert('No subtitle loaded.'); return; }
+  if (!text) { alert('Chưa tải phụ đề.'); return; }
   btn.disabled = true;
   const oldText = btn.innerHTML;
-  btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Translating...';
+  btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Đang dịch...';
   try {
     await apiPost('/subtitle/translate', {
       text, engine: 'marian',
@@ -1659,7 +1723,7 @@ document.getElementById('btn-sub-trans-marian')?.addEventListener('click', async
     });
     addTaskRow();
   } catch (e) {
-    alert('MarianMT translation failed: ' + e.message);
+    alert('Dịch bằng MarianMT thất bại: ' + e.message);
   } finally {
     btn.disabled = false;
     btn.innerHTML = oldText;
@@ -1668,7 +1732,7 @@ document.getElementById('btn-sub-trans-marian')?.addEventListener('click', async
 
 document.getElementById('btn-sub-trans-batch')?.addEventListener('click', async () => {
   const text = await getSubtitleText();
-  if (!text) { alert('No subtitle loaded.'); return; }
+  if (!text) { alert('Chưa tải phụ đề.'); return; }
   await apiPost('/subtitle/translate', {
     text, engine: 'gpt',
     source_lang: document.getElementById('sel-lang-from')?.value === 'Tiếng Anh' ? 'en' : 'zh',
@@ -1694,7 +1758,7 @@ document.getElementById('btn-sub-export-burn')?.addEventListener('click', async 
     type: 'pipeline',
     params: {
       source_lang: 'vi', target_lang: 'vi',
-      translate_engine: 'gpt',
+      translate_engine: 'nllb',
       tts_provider: 'edge',
       tts_voice: 'vi-VN-NamMinhNeural',
       burn_subtitle: true,
@@ -1876,18 +1940,18 @@ async function loadTemplateList() {
   if (!container) return;
   const templates = await apiGet('/templates');
   if (!templates || templates.length === 0) {
-    container.innerHTML = '<div class="log-placeholder">No templates yet.</div>';
-    document.getElementById('template-count') && (document.getElementById('template-count').textContent = '0 templates');
+    container.innerHTML = '<div class="log-placeholder">Chưa có template nào.</div>';
+    document.getElementById('template-count') && (document.getElementById('template-count').textContent = '0 mẫu sẵn');
     return;
   }
   container.innerHTML = templates.map(t => `
     <div class="result-table-header" style="padding:2px 6px;font-size:9px;border-bottom:1px solid var(--border);cursor:default">
-      <span class="col-hdr" style="flex:2">${t.name || 'Unnamed'}</span>
+      <span class="col-hdr" style="flex:2">${t.name || 'Chưa đặt tên'}</span>
       <span class="col-hdr" style="flex:1">${t.preset || '-'}</span>
       <span class="col-hdr" style="width:60px">${t.resolution || '-'}</span>
       <span class="col-hdr" style="width:40px">${t.fps || '-'}</span>
       <span class="col-hdr" style="width:100px;display:flex;gap:4px">
-        <button class="action-btn tmpl-load" data-name="${t.name}" style="height:18px;padding:0 6px;font-size:8px">Load</button>
+        <button class="action-btn tmpl-load" data-name="${t.name}" style="height:18px;padding:0 6px;font-size:8px">Tải</button>
         <button class="action-btn tmpl-delete" data-name="${t.name}" style="height:18px;padding:0 6px;font-size:8px;background:#ef4444;color:#fff;border:none">Xóa</button>
       </span>
     </div>
@@ -1923,7 +1987,7 @@ async function applyTemplateByName(name) {
 }
 
 document.getElementById('btn-save-template')?.addEventListener('click', async () => {
-  const name = document.getElementById('inp-template-name')?.value || prompt('Template name:', 'My Template');
+  const name = document.getElementById('inp-template-name')?.value || prompt('Tên template:', 'Mẫu của tôi');
   if (!name) return;
   const config = {
     name,
@@ -2024,7 +2088,7 @@ document.querySelector('[data-tab="download"]')?.addEventListener('click', funct
 
 /* ═══════════════ MUSIC CROSSFADE / PLAYLIST ═══════════════ */
 document.getElementById('btn-music-crossfade')?.addEventListener('click', async () => {
-  const dur = prompt('Crossfade duration (seconds):', '2');
+  const dur = prompt('Thời gian chồng mờ (giây):', '2');
   if (dur === null) return;
   await apiPost('/edit/crop', {
     video_path: document.getElementById('inp-video-path')?.value || document.getElementById('inp-srt-path')?.value || '',
@@ -2115,7 +2179,7 @@ function makeTimelineInteractive() {
 
 /* ═══════════════ VERSION HISTORY ═══════════════ */
 document.getElementById('btn-version-history')?.addEventListener('click', async () => {
-  if (!currentProjectId) { alert('Please load a project first.'); return; }
+  if (!currentProjectId) { alert('Vui lòng tải một dự án trước.'); return; }
   const versions = await apiGet(`/projects/${currentProjectId}/versions`);
   const modal = document.getElementById('version-modal');
   const list = document.getElementById('version-list');
@@ -2126,16 +2190,16 @@ document.getElementById('btn-version-history')?.addEventListener('click', async 
       const row = document.createElement('div');
       row.className = 'result-row';
       row.innerHTML = `<span style="flex:1">v${v.version}</span><span style="flex:1">${new Date(v.saved_at * 1000).toLocaleString()}</span><span>${(v.size / 1024).toFixed(1)}KB</span>
-        <button class="action-btn" style="height:18px;padding:1px 6px;font-size:9px" data-version="${v.file}">Restore</button>`;
+        <button class="action-btn" style="height:18px;padding:1px 6px;font-size:9px" data-version="${v.file}">Khôi phục</button>`;
       row.querySelector('.action-btn').addEventListener('click', async () => {
         await apiPost(`/projects/${currentProjectId}/restore?version_file=${encodeURIComponent(v.file)}`);
-        alert(`Restored to version v${v.version}`);
+        alert(`Đã khôi phục về phiên bản v${v.version}`);
         modal.classList.remove('show');
       });
       list.appendChild(row);
     });
   } else {
-    list.innerHTML = '<div style="color:var(--text-dim);padding:8px;text-align:center">No versions saved yet. Save the project to create a version.</div>';
+    list.innerHTML = '<div style="color:var(--text-dim);padding:8px;text-align:center">Chưa có phiên bản nào được lưu. Hãy lưu dự án để tạo phiên bản.</div>';
   }
   modal.classList.add('show');
 });
@@ -2174,7 +2238,7 @@ document.querySelectorAll('.info-btn').forEach(btn => {
   } else if (!btn.id) {
     btn.addEventListener('click', () => {
       const parentLabel = btn.closest('.tab-row')?.querySelector('.field-label')?.textContent || '';
-      alert(`More info about: ${parentLabel || 'this feature'}`);
+      alert(`Thêm thông tin về: ${parentLabel || 'tính năng này'}`);
     });
   }
 });
@@ -2182,10 +2246,11 @@ document.querySelectorAll('.info-btn').forEach(btn => {
 /* ═══════════════ VOICE PLAY BUTTON ═══════════════ */
 document.getElementById('btn-play-voice')?.addEventListener('click', async () => {
   const text = 'Xin chào, đây là giọng đọc thử nghiệm';
-  const provider = document.getElementById('sel-tts-provider')?.value?.toLowerCase().replace(' tts', '').replace(' (free)', '') || 'edge';
-  const voice = document.getElementById('sel-voice-type')?.value === 'Nam' ? 'vi-VN-NamMinhNeural' : 'vi-VN-HoaiMyNeural';
-  const audio = new Audio(`/api/voice/play?text=${encodeURIComponent(text)}&provider=${provider}&voice=${voice}`);
-  audio.play().catch(() => alert('Voice preview: ' + text));
+  const provider = document.getElementById('sel-tts-provider')?.value === 'FPT.AI TTS' ? 'fpt' : (document.getElementById('sel-tts-provider')?.value?.toLowerCase().replace(' tts', '').replace(' (free)', '') || 'edge');
+  const voice = document.getElementById('sel-voice-type')?.value || 'vi-VN-HoaiMyNeural';
+  const fptKey = document.getElementById('inp-fpt-key')?.value || '';
+  const audio = new Audio(`/api/voice/play?text=${encodeURIComponent(text)}&provider=${provider}&voice=${voice}&fpt_api_key=${encodeURIComponent(fptKey)}`);
+  audio.play().catch(() => alert('Nghe thử giọng nói: ' + text));
 });
 
 /* ═══════════════ TRANSLATE SETTINGS ═══════════════ */
@@ -2196,8 +2261,8 @@ document.getElementById('btn-translate-settings')?.addEventListener('click', () 
 /* ═══════════════ ENHANCE BRANDING BUTTONS ═══════════════ */
 document.getElementById('btn-branding-logo')?.addEventListener('click', async () => {
   const videoPath = document.getElementById('inp-video-path')?.value || document.getElementById('inp-srt-path')?.value || '';
-  if (!videoPath) { alert('No video selected'); return; }
-  const logoPath = prompt('Logo image path:', '');
+  if (!videoPath) { alert('Chưa chọn video'); return; }
+  const logoPath = prompt('Đường dẫn hình ảnh logo:', '');
   if (!logoPath) return;
   await apiPost('/enhance/branding/logo', { video_path: videoPath, logo_path: logoPath, position: 'bottom_right', opacity: 0.7 });
   addTaskRow();
@@ -2205,8 +2270,8 @@ document.getElementById('btn-branding-logo')?.addEventListener('click', async ()
 
 document.getElementById('btn-branding-text')?.addEventListener('click', async () => {
   const videoPath = document.getElementById('inp-video-path')?.value || document.getElementById('inp-srt-path')?.value || '';
-  if (!videoPath) { alert('No video selected'); return; }
-  const text = prompt('Overlay text:', 'RichReviewTool');
+  if (!videoPath) { alert('Chưa chọn video'); return; }
+  const text = prompt('Văn bản chèn:', 'RichReviewTool');
   if (!text) return;
   await apiPost('/enhance/branding/text', { video_path: videoPath, text, position: 'bottom', font_size: 48 });
   addTaskRow();
@@ -2214,20 +2279,156 @@ document.getElementById('btn-branding-text')?.addEventListener('click', async ()
 
 document.getElementById('btn-branding-qr')?.addEventListener('click', async () => {
   const videoPath = document.getElementById('inp-video-path')?.value || document.getElementById('inp-srt-path')?.value || '';
-  if (!videoPath) { alert('No video selected'); return; }
-  const content = prompt('QR content (URL):', 'https://example.com');
+  if (!videoPath) { alert('Chưa chọn video'); return; }
+  const content = prompt('Nội dung QR (URL):', 'https://example.com');
   if (!content) return;
   await apiPost('/enhance/branding/qr', { video_path: videoPath, content, position: 'bottom_right', size: 120 });
   addTaskRow();
 });
 
+/* ═══════════════ EXTRACT SUBTITLE FROM VIDEO ═══════════════ */
+document.getElementById('btn-extract-srt')?.addEventListener('click', async () => {
+  const videoPath = document.getElementById('inp-video-path')?.value;
+  if (!videoPath) {
+    alert('Vui lòng chọn file video ở mục Path Video trước!');
+    return;
+  }
+  
+  // Show loading indicator
+  const modal = document.getElementById('extract-sub-modal');
+  modal.classList.add('show');
+  
+  const streamsSection = document.getElementById('sub-streams-section');
+  const streamsList = document.getElementById('sub-streams-list');
+  streamsSection.style.display = 'none';
+  streamsList.innerHTML = '<div style="color:#718096; text-align:center; padding:10px;">Đang quét phụ đề trong video...</div>';
+  
+  try {
+    const res = await apiPost('/subtitle/detect-streams', { path: videoPath });
+    if (res && res.streams && res.streams.length > 0) {
+      streamsList.innerHTML = '';
+      res.streams.forEach((stream, idx) => {
+        const item = document.createElement('label');
+        item.style.display = 'flex';
+        item.style.alignItems = 'center';
+        item.style.gap = '8px';
+        item.style.cursor = 'pointer';
+        item.style.padding = '4px 0';
+        
+        const radio = document.createElement('input');
+        radio.type = 'radio';
+        radio.name = 'srt-stream-choice';
+        radio.value = stream.index;
+        if (idx === 0) radio.checked = true;
+        
+        const labelText = document.createElement('span');
+        labelText.textContent = `Track ${stream.index}: ${stream.title}`;
+        
+        item.appendChild(radio);
+        item.appendChild(labelText);
+        streamsList.appendChild(item);
+      });
+      streamsSection.style.display = 'block';
+    } else {
+      streamsList.innerHTML = '<div style="color:#e53e3e; text-align:center; padding:10px;">Không tìm thấy phụ đề mềm nào tích hợp sẵn. Hãy sử dụng Whisper STT ở dưới.</div>';
+    }
+  } catch (err) {
+    streamsList.innerHTML = '<div style="color:#e53e3e; text-align:center; padding:10px;">Lỗi khi quét phụ đề.</div>';
+  }
+});
+
+document.getElementById('btn-extract-selected-stream')?.addEventListener('click', async () => {
+  const videoPath = document.getElementById('inp-video-path')?.value;
+  const selectedRadio = document.querySelector('input[name="srt-stream-choice"]:checked');
+  if (!selectedRadio) {
+    alert('Vui lòng chọn một track phụ đề để trích xuất!');
+    return;
+  }
+  
+  const index = parseInt(selectedRadio.value);
+  const extractBtn = document.getElementById('btn-extract-selected-stream');
+  const originalText = extractBtn.textContent;
+  extractBtn.textContent = 'Đang trích xuất...';
+  extractBtn.disabled = true;
+  
+  try {
+    const res = await apiPost('/subtitle/extract-stream', {
+      path: videoPath,
+      index: index,
+      project_id: currentProjectId || 1
+    });
+    if (res && res.path) {
+      document.getElementById('inp-srt-path').value = res.path;
+      document.getElementById('extract-sub-modal').classList.remove('show');
+      alert('Đã trích xuất phụ đề thành công! Click OK để tự động nạp phụ đề.');
+      // Auto trigger load
+      document.getElementById('btn-load')?.click();
+    } else {
+      alert('Không thể trích xuất phụ đề.');
+    }
+  } catch (err) {
+    alert('Có lỗi xảy ra: ' + (err.message || err));
+  } finally {
+    extractBtn.textContent = originalText;
+    extractBtn.disabled = false;
+  }
+});
+
+document.getElementById('btn-run-whisper-stt')?.addEventListener('click', async () => {
+  const videoPath = document.getElementById('inp-video-path')?.value;
+  if (!videoPath) {
+    alert('Vui lòng chọn video trước!');
+    return;
+  }
+  
+  const language = document.getElementById('sel-stt-lang')?.value || 'vi';
+  const runBtn = document.getElementById('btn-run-whisper-stt');
+  const originalText = runBtn.textContent;
+  runBtn.textContent = 'Đang kích hoạt Whisper...';
+  runBtn.disabled = true;
+  
+  try {
+    const res = await apiPost('/subtitle/transcribe-video', {
+      path: videoPath,
+      language: language,
+      project_id: currentProjectId || 1
+    });
+    if (res) {
+      document.getElementById('extract-sub-modal').classList.remove('show');
+      alert('Đã khởi chạy tiến trình Whisper STT chạy ngầm thành công!\nBạn có thể mở Tab Phụ Đề / nhấn Xem Log để theo dõi tiến trình.');
+      
+      // Periodically check subtitles list to auto-load when done
+      const checkInterval = setInterval(async () => {
+        try {
+          const subs = await apiGet(`/subtitle/${currentProjectId || 1}`);
+          const whisperSub = subs.find(s => s.source === `whisper_${language}`);
+          if (whisperSub) {
+            clearInterval(checkInterval);
+            alert('Nhận dạng giọng nói (Whisper STT) đã hoàn thành! Đang nạp lại phụ đề...');
+            // Put it into the input path and click load
+            document.getElementById('inp-srt-path').value = `data/subtitles/project_${currentProjectId || 1}_stt.srt`;
+            document.getElementById('btn-load')?.click();
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }, 5000);
+    }
+  } catch (err) {
+    alert('Lỗi kích hoạt Whisper: ' + (err.message || err));
+  } finally {
+    runBtn.textContent = originalText;
+    runBtn.disabled = false;
+  }
+});
+
 /* ═══════════════ EDIT TAB - CROP/RESIZE CHECKBOXES ═══════════════ */
 document.getElementById('chk-edit-crop')?.addEventListener('change', function() {
   if (this.checked) {
-    const x = prompt('Crop X:', '0'); if (x === null) { this.checked = false; return; }
-    const y = prompt('Crop Y:', '0'); if (y === null) { this.checked = false; return; }
-    const w = prompt('Crop Width:', '1920'); if (w === null) { this.checked = false; return; }
-    const h = prompt('Crop Height:', '1080'); if (h === null) { this.checked = false; return; }
+    const x = prompt('Tọa độ X cắt:', '0'); if (x === null) { this.checked = false; return; }
+    const y = prompt('Tọa độ Y cắt:', '0'); if (y === null) { this.checked = false; return; }
+    const w = prompt('Chiều rộng cắt:', '1920'); if (w === null) { this.checked = false; return; }
+    const h = prompt('Chiều cao cắt:', '1080'); if (h === null) { this.checked = false; return; }
     apiPost('/edit/crop', {
       video_path: document.getElementById('inp-video-path')?.value || document.getElementById('inp-srt-path')?.value || '',
       operations: [{ type: 'crop', x: parseInt(x), y: parseInt(y), w: parseInt(w), h: parseInt(h) }],
@@ -2247,8 +2448,8 @@ document.getElementById('chk-edit-scene-detect')?.addEventListener('change', fun
 
 document.getElementById('chk-edit-resize')?.addEventListener('change', function() {
   if (this.checked) {
-    const w = prompt('Width:', '1280'); if (w === null) { this.checked = false; return; }
-    const h = prompt('Height:', '720'); if (h === null) { this.checked = false; return; }
+    const w = prompt('Chiều rộng:', '1280'); if (w === null) { this.checked = false; return; }
+    const h = prompt('Chiều cao:', '720'); if (h === null) { this.checked = false; return; }
     apiPost('/edit/resize', {
       video_path: document.getElementById('inp-video-path')?.value || document.getElementById('inp-srt-path')?.value || '',
       operations: [{ type: 'resize', width: parseInt(w), height: parseInt(h) }],
@@ -2306,9 +2507,9 @@ loadTimeline = async function(projectId) {
 document.getElementById('btn-edit-timeline')?.addEventListener('click', () => {
   if (currentProjectId) {
     loadTimeline(currentProjectId);
-    alert('Timeline loaded from project data.');
+    alert('Dòng thời gian đã tải từ dữ liệu dự án.');
   } else {
-    alert('Please load a project first.');
+    alert('Vui lòng tải một dự án trước.');
   }
 });
 
@@ -2338,7 +2539,7 @@ function bindApiAction(btnId, endpoint, payloadFn, resultElId, resultKey) {
   if (!btn) return;
   btn.addEventListener('click', async () => {
     const originalText = btn.innerHTML;
-    btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Processing...';
+    btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Đang xử lý...';
     btn.disabled = true;
     try {
       const payload = payloadFn ? payloadFn() : {};
@@ -2391,10 +2592,10 @@ bindApiAction('btn-ai-speakers', '/ai/speakers', () => ({
   if (btn) {
     btn.addEventListener('click', () => {
       const originalText = btn.innerHTML;
-      btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Processing...';
+      btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Đang xử lý...';
       setTimeout(() => {
           btn.innerHTML = originalText;
-          alert(id.replace('btn-sub-trans-', '').toUpperCase() + ' Translation Queued!');
+          alert('Đã đưa tiến trình dịch thuật ' + id.replace('btn-sub-trans-', '').toUpperCase() + ' vào hàng đợi!');
       }, 1000);
     });
   }
@@ -2429,11 +2630,47 @@ function statusBadge(status) {
   return `<span style="color:${color};font-size:9px;font-weight:600">${label}</span>`;
 }
 
+function updateQueueListUI(jobs) {
+  const queueList = document.querySelector('.queue-list');
+  if (!queueList) return;
+  if (!jobs || jobs.length === 0) {
+    queueList.innerHTML = '<div style="color:#718096; padding:4px 8px; font-size:11px; font-style:italic">Hàng đợi trống</div>';
+    return;
+  }
+  queueList.innerHTML = jobs.map(item => {
+    const statusIcon = item.status === 'running' ? '▶' : item.status === 'paused' ? '⏸' : item.status === 'completed' ? '✓' : item.status === 'failed' ? '✗' : '⌛';
+    const activeClass = item.status === 'running' ? 'active' : '';
+    const name = item.input_path ? item.input_path.split(/[\\/]/).pop() : `${item.type.toUpperCase()} #${item.id || 'N/A'}`;
+    return `
+      <div class="queue-job ${activeClass}" data-id="${item.id || ''}" data-status="${item.status || 'pending'}" style="cursor:pointer" onclick="showJobLogs(${item.id || 'null'})">
+        <span class="queue-status-icon ${item.status || 'pending'}">${statusIcon}</span>
+        <span class="queue-name" title="${name}">${name}</span>
+      </div>
+    `;
+  }).join('');
+}
+
+window.showJobLogs = function(jobId) {
+  const filterInput = document.getElementById('inp-log-filter');
+  if (filterInput) {
+    filterInput.value = jobId !== null ? jobId : '';
+  }
+  const logModal = document.getElementById('log-modal');
+  if (logModal) {
+    logModal.classList.add('show');
+  }
+  if (typeof fetchLogs === 'function') {
+    fetchLogs();
+  }
+};
+
 function renderQueueRows(jobs) {
   const body = document.getElementById('result-table-body');
   if (!body) return;
   body.innerHTML = '';
   rowCount = 0;
+
+  updateQueueListUI(jobs);
 
   if (!jobs || jobs.length === 0) {
     body.innerHTML = '<div style="padding:10px 12px;color:var(--text-muted);font-size:11px">Chưa có task nào trong hàng đợi</div>';
@@ -2472,29 +2709,12 @@ function renderQueueRows(jobs) {
 }
 
 async function initQueueTable() {
-  // 1. Thử load từ API
   const apiJobs = await apiGet('/queue');
   if (apiJobs && Array.isArray(apiJobs) && apiJobs.length > 0) {
     renderQueueRows(apiJobs);
     return;
   }
-
-  // 2. Fallback: đọc từ .queue-job trong HTML
-  const staticJobs = [...document.querySelectorAll('.queue-job')].map((el, idx) => ({
-    id: null,
-    name: el.querySelector('.queue-name')?.textContent || `Movie${idx + 1}`,
-    status: el.dataset.status || 'pending',
-    progress: el.dataset.status === 'completed' || el.dataset.status === 'done' ? 100
-            : el.dataset.status === 'running' ? 50
-            : 0,
-    input_path: el.querySelector('.queue-name')?.textContent || `Movie${idx + 1}`,
-    output_path: null,
-    elapsed: null,
-    sub_source: null,
-    sub_translated: null,
-  }));
-
-  renderQueueRows(staticJobs);
+  renderQueueRows([]);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -2528,4 +2748,85 @@ function sseQueueRefresh(jobs) {
       }
     });
   }
-};
+}
+
+let allEdgeVoices = [];
+
+async function loadEdgeVoices() {
+  try {
+    const res = await fetch('/api/voice/edge-voices');
+    if (res.ok) {
+      allEdgeVoices = await res.json();
+      updateVoiceDropdown();
+    }
+  } catch (err) {
+    console.error('Failed to load Edge voices:', err);
+  }
+}
+
+function updateVoiceDropdown() {
+  const providerSel = document.getElementById('sel-tts-provider');
+  const langSel = document.getElementById('sel-voice-lang');
+  const typeSel = document.getElementById('sel-voice-type');
+  if (!langSel || !typeSel) return;
+
+  const provider = providerSel?.value;
+  if (provider === 'FPT.AI TTS') {
+    const fptVoices = [
+      { value: 'banmai', text: 'Ban Mai (Nữ miền Bắc)' },
+      { value: 'lannhi', text: 'Lan Nhi (Nữ miền Nam)' },
+      { value: 'leminh', text: 'Lê Minh (Nam miền Bắc)' },
+      { value: 'myan', text: 'Mỹ An (Nữ miền Trung)' },
+      { value: 'thuminh', text: 'Thu Minh (Nữ miền Bắc)' },
+      { value: 'giahuy', text: 'Gia Huy (Nam miền Trung)' },
+      { value: 'linhsan', text: 'Linh San (Nữ miền Nam)' }
+    ];
+    typeSel.innerHTML = '';
+    fptVoices.forEach(v => {
+      const opt = document.createElement('option');
+      opt.value = v.value;
+      opt.textContent = v.text;
+      typeSel.appendChild(opt);
+    });
+    return;
+  }
+
+  if (!allEdgeVoices.length) return;
+  const selectedLang = langSel.value;
+  const currentVal = typeSel.value;
+  typeSel.innerHTML = '';
+
+  let filtered = allEdgeVoices;
+  if (selectedLang === 'Tiếng Việt') {
+    filtered = allEdgeVoices.filter(v => v.locale.startsWith('vi'));
+  } else if (selectedLang === 'Tiếng Anh') {
+    filtered = allEdgeVoices.filter(v => v.locale.startsWith('en'));
+  }
+
+  filtered.forEach(v => {
+    const opt = document.createElement('option');
+    opt.value = v.short_name;
+    const cleanName = v.friendly_name.replace('Microsoft ', '').replace(' Online (Natural)', '').replace(' - Vietnamese (Vietnam)', '').replace(' - English (United States)', '');
+    opt.textContent = `${cleanName} (${v.gender})`;
+    typeSel.appendChild(opt);
+  });
+
+  if (currentVal && Array.from(typeSel.options).some(o => o.value === currentVal)) {
+    typeSel.value = currentVal;
+  }
+}
+
+document.getElementById('sel-tts-provider')?.addEventListener('change', (e) => {
+  const provider = e.target.value;
+  const fptRow = document.getElementById('row-fpt-key');
+  if (fptRow) {
+    fptRow.style.display = (provider === 'FPT.AI TTS') ? 'flex' : 'none';
+  }
+  updateVoiceDropdown();
+});
+
+document.getElementById('sel-voice-lang')?.addEventListener('change', updateVoiceDropdown);
+document.addEventListener('DOMContentLoaded', loadEdgeVoices);
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+  loadEdgeVoices();
+}

@@ -9,27 +9,27 @@ router = APIRouter()
 def youtube(data: dict, bg: BackgroundTasks):
     video_path = data.get("video_path", "")
     if not video_path:
-        raise HTTPException(400, "video_path required")
+        raise HTTPException(400, "Yêu cầu cung cấp video_path")
     bg.add_task(publish_youtube, video_path, data.get("title", "My Video"), data.get("description", ""), data.get("privacy", "private"))
-    return {"message": "YouTube publish queued"}
+    return {"message": "Đã đưa tiến trình đăng YouTube vào hàng đợi"}
 
 
 @router.post("/tiktok")
 def tiktok(data: dict, bg: BackgroundTasks):
     video_path = data.get("video_path", "")
     if not video_path:
-        raise HTTPException(400, "video_path required")
+        raise HTTPException(400, "Yêu cầu cung cấp video_path")
     bg.add_task(publish_tiktok, video_path, data.get("title", "My Video"), data.get("description", ""))
-    return {"message": "TikTok publish queued"}
+    return {"message": "Đã đưa tiến trình đăng TikTok vào hàng đợi"}
 
 
 @router.post("/facebook")
 def facebook(data: dict, bg: BackgroundTasks):
     video_path = data.get("video_path", "")
     if not video_path:
-        raise HTTPException(400, "video_path required")
+        raise HTTPException(400, "Yêu cầu cung cấp video_path")
     bg.add_task(publish_facebook, video_path, data.get("title", "My Video"), data.get("description", ""))
-    return {"message": "Facebook publish queued"}
+    return {"message": "Đã đưa tiến trình đăng Facebook vào hàng đợi"}
 
 
 @router.get("/history")
