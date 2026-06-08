@@ -8,6 +8,30 @@ from pathlib import Path
 from ..config import FFMPEG_PATH, FFPROBE_PATH, EXPORTS_DIR, CACHE_DIR
 
 
+_has_nvenc_cache = None
+
+def has_nvenc() -> bool:
+    global _has_nvenc_cache
+    if _has_nvenc_cache is not None:
+        return _has_nvenc_cache
+    try:
+        startupinfo = subprocess.STARTUPINFO()
+        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        res = subprocess.run(
+            [FFMPEG_PATH, "-encoders"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            startupinfo=startupinfo,
+            creationflags=subprocess.CREATE_NO_WINDOW
+        )
+        _has_nvenc_cache = "h264_nvenc" in res.stdout
+    except Exception:
+        _has_nvenc_cache = False
+    return _has_nvenc_cache
+
+
+
 def run_ffmpeg(cmd: list, timeout: int = 3600) -> bool:
     full_cmd = [FFMPEG_PATH, "-y"] + cmd
     print(f"[FFmpeg] {' '.join(str(a) for a in full_cmd)}")
@@ -60,13 +84,32 @@ def render_video(input_path: str, output_path: str, params: dict = None):
         cmd.extend(["-vf", ",".join(vf)])
 
     codec = p.get("codec", "h264")
-    codec_map = {"h264": "libx264", "h265": "libx265", "av1": "libaom-av1"}
-    cmd.extend(["-c:v", codec_map.get(codec, "libx264")])
+    if has_nvenc():
+        codec_map = {"h264": "h264_nvenc", "h265": "hevc_nvenc", "av1": "libaom-av1"}
+    else:
+        codec_map = {"h264": "libx264", "h265": "libx265", "av1": "libaom-av1"}
+    chosen_codec = codec_map.get(codec, "libx264")
+    cmd.extend(["-c:v", chosen_codec])
 
     if p.get("bitrate"):
         cmd.extend(["-b:v", p["bitrate"]])
     else:
-        cmd.extend(["-crf", p.get("crf", "18"), "-preset", p.get("preset", "medium")])
+        if "nvenc" in chosen_codec:
+            preset_map = {
+                "ultrafast": "p1",
+                "superfast": "p1",
+                "veryfast": "p2",
+                "faster": "p2",
+                "fast": "p3",
+                "medium": "p4",
+                "slow": "p5",
+                "slower": "p6",
+                "veryslow": "p7"
+            }
+            nvenc_preset = preset_map.get(p.get("preset", "medium"), "p4")
+            cmd.extend(["-rc", "vbr", "-cq", p.get("crf", "18"), "-preset", nvenc_preset])
+        else:
+            cmd.extend(["-crf", p.get("crf", "18"), "-preset", p.get("preset", "medium")])
 
     cmd.extend(["-c:a", "aac", "-b:a", p.get("audio_bitrate", "192k"), "-y", output_path])
     return run_ffmpeg(cmd)
@@ -159,11 +202,16 @@ def blur_subtitle_region(video_path: str, output_path: str, region: dict) -> boo
         f"boxblur=lr=2:lp=1[blurred];"
         f"[0:v][blurred]overlay=x={rx}:y={ry}[out]"
     )
+    if has_nvenc():
+        codec_args = ["-c:v", "h264_nvenc", "-preset", "p4", "-rc", "vbr", "-cq", "18"]
+    else:
+        codec_args = ["-c:v", "libx264", "-crf", "18", "-preset", "medium"]
+
     cmd = [
         "-i", video_path,
         "-filter_complex", filter_complex,
         "-map", "[out]", "-map", "0:a",
-        "-c:v", "libx264", "-crf", "18", "-preset", "medium",
+    ] + codec_args + [
         "-c:a", "copy",
         "-y", output_path,
     ]
@@ -278,10 +326,10 @@ def burn_subtitle(video_path: str, subtitle_path: str, output_path: str = None,
 
     current_input = video_path
     tmp_blurred = None
+    tmp_dir = Path(CACHE_DIR) / "tmp"
+    tmp_dir.mkdir(parents=True, exist_ok=True)
 
     if remove_hardsub and region and region.get("width", 0) > 0 and region.get("height", 0) > 0:
-        tmp_dir = Path(CACHE_DIR) / "tmp"
-        tmp_dir.mkdir(parents=True, exist_ok=True)
         tmp_blurred = str(tmp_dir / f"blur_{os.getpid()}_{os.urandom(4).hex()}.mp4")
         if blur_subtitle_region(video_path, tmp_blurred, region):
             current_input = tmp_blurred
@@ -289,6 +337,11 @@ def burn_subtitle(video_path: str, subtitle_path: str, output_path: str = None,
     safe_src = _temp_copy(subtitle_path)
     sub_ext = Path(subtitle_path).suffix.lower()
     safe_path = _filter_path(safe_src)
+
+    if has_nvenc():
+        codec_args = ["-c:v", "h264_nvenc", "-preset", "p4", "-rc", "vbr", "-cq", "18"]
+    else:
+        codec_args = ["-c:v", "libx264", "-crf", "18", "-preset", "medium"]
 
     if sub_ext == ".srt" and region:
         info = get_video_info(video_path)
@@ -305,7 +358,7 @@ def burn_subtitle(video_path: str, subtitle_path: str, output_path: str = None,
         cmd = [
             "-i", current_input,
             "-vf", f"ass=filename='{safe_path}'",
-            "-c:v", "libx264", "-crf", "18", "-preset", "medium",
+        ] + codec_args + [
             "-c:a", "copy",
             "-y", output_path,
         ]
@@ -313,7 +366,7 @@ def burn_subtitle(video_path: str, subtitle_path: str, output_path: str = None,
         cmd = [
             "-i", current_input,
             "-vf", f"subtitles=filename='{safe_path}'",
-            "-c:v", "libx264", "-crf", "18", "-preset", "medium",
+        ] + codec_args + [
             "-c:a", "copy",
             "-y", output_path,
         ]
@@ -321,7 +374,7 @@ def burn_subtitle(video_path: str, subtitle_path: str, output_path: str = None,
         cmd = [
             "-i", current_input,
             "-vf", f"ass=filename='{safe_path}'",
-            "-c:v", "libx264", "-crf", "18", "-preset", "medium",
+        ] + codec_args + [
             "-c:a", "copy",
             "-y", output_path,
         ]

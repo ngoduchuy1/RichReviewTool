@@ -7,8 +7,8 @@ $rootDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $rootDir
 
 Write-Host "============================================" -ForegroundColor Cyan
-Write-Host "  RichReviewTool V2.0.0" -ForegroundColor Cyan
-Write-Host "  Rich Tool RevMovie" -ForegroundColor Cyan
+Write-Host "  0xForge V2.0.0" -ForegroundColor Cyan
+Write-Host "  0xForge Tool" -ForegroundColor Cyan
 Write-Host "============================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -22,7 +22,7 @@ if ($Build) {
     pip install pyinstaller -q
     pyinstaller RichReviewTool.spec --clean
     if ($LASTEXITCODE -eq 0) {
-        Write-Host "[OK] Da build xong: dist\RichReviewTool.exe" -ForegroundColor Green
+        Write-Host "[OK] Da build xong: dist\0xForge.exe" -ForegroundColor Green
     } else {
         Write-Host "[LOI] Build that bai" -ForegroundColor Red
     }

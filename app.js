@@ -1,4 +1,4 @@
-﻿/* â”€â”€â”€ app.js â€“ RichReviewTool V2.0.0 â”€â”€â”€ */
+/* ─── app.js – 0xForge V2.0.0 ─── */
 
 /* â”€â”€â”€ API Layer â”€â”€â”€ */
 const API_BASE = window.location.origin + '/api';
@@ -30,41 +30,107 @@ let currentProjectId = null;
 
 function onQueueChange(fn) {
   queueListeners.push(fn);
+  return () => {
+    queueListeners = queueListeners.filter(listener => listener !== fn);
+  };
 }
 
-function connectQueueSSE() {
-  const es = new EventSource(API_BASE + '/queue/events');
-  es.onmessage = function (e) {
+class QueueSSEManager {
+  constructor() {
+    this.eventSource = null;
+    this.reconnectAttempts = 0;
+    this.maxReconnectAttempts = 5;
+    this.reconnectDelay = 3000;
+    this.reconnectTimer = null;
+  }
+
+  connect() {
+    this.disconnect(false);
     try {
-      const msg = JSON.parse(e.data);
-      if (msg.type === 'queue_changed') {
-        latestQueueData = msg.data || [];
-        queueListeners.forEach(fn => fn(latestQueueData));
-      } else if (msg.type === 'timeline_updated') {
-        const projectId = msg.data?.project_id;
-        if (!projectId || !currentProjectId || Number(projectId) === Number(currentProjectId)) {
-          loadTimeline(currentProjectId || projectId).catch(() => {});
+      this.eventSource = new EventSource(API_BASE + '/queue/events');
+      this.eventSource.onopen = () => {
+        this.reconnectAttempts = 0;
+      };
+      this.eventSource.onmessage = (e) => {
+        try {
+          const msg = JSON.parse(e.data);
+          this.handleMessage(msg);
+        } catch (err) {
+          addClientLog('error', 'SSE parse error', err.message || String(err));
         }
-      } else if (msg.type === 'subtitle_updated') {
-        const projectId = msg.data?.project_id;
-        if (!projectId || !currentProjectId || Number(projectId) === Number(currentProjectId)) {
-          if (msg.data?.path) {
-            const srtInput = document.getElementById('inp-srt-path');
-            if (srtInput) srtInput.value = msg.data.path;
-          }
-          loadTimeline(currentProjectId || projectId).catch(() => {});
-          showToast('Phu de da cap nhat', 'success', 2500);
-        }
-      } else if (msg.type === 'download_updated') {
-        updateDownloadProgressUI(msg.data || {});
+      };
+      this.eventSource.onerror = () => {
+        this.scheduleReconnect();
+      };
+    } catch (err) {
+      addClientLog('error', 'SSE connection error', err.message || String(err));
+      this.scheduleReconnect();
+    }
+  }
+
+  handleMessage(msg) {
+    if (msg.type === 'queue_changed') {
+      latestQueueData = msg.data || [];
+      queueListeners.forEach(fn => {
+        try { fn(latestQueueData); } catch (err) { console.error(err); }
+      });
+      return;
+    }
+
+    if (msg.type === 'timeline_updated') {
+      const projectId = msg.data?.project_id;
+      if (!projectId || !currentProjectId || Number(projectId) === Number(currentProjectId)) {
+        loadTimeline(currentProjectId || projectId).catch(() => {});
       }
-    } catch (_) {}
-  };
-  es.onerror = function () {
-    setTimeout(connectQueueSSE, 3000);
-  };
+      return;
+    }
+
+    if (msg.type === 'subtitle_updated') {
+      const projectId = msg.data?.project_id;
+      if (!projectId || !currentProjectId || Number(projectId) === Number(currentProjectId)) {
+        if (msg.data?.path) {
+          const srtInput = document.getElementById('inp-srt-path');
+          if (srtInput) srtInput.value = msg.data.path;
+        }
+        loadTimeline(currentProjectId || projectId).catch(() => {});
+        showToast('Phu de da cap nhat', 'success', 2500);
+      }
+      return;
+    }
+
+    if (msg.type === 'download_updated') {
+      updateDownloadProgressUI(msg.data || {});
+    }
+  }
+
+  scheduleReconnect() {
+    this.disconnect(false);
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      addClientLog('error', 'SSE max reconnect attempts reached', '');
+      showToast('Mat ket noi realtime. Hay tai lai tool neu tien trinh khong cap nhat.', 'warn', 6000);
+      return;
+    }
+    this.reconnectAttempts++;
+    const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
+    clearTimeout(this.reconnectTimer);
+    this.reconnectTimer = setTimeout(() => this.connect(), delay);
+  }
+
+  disconnect(clearListeners = true) {
+    clearTimeout(this.reconnectTimer);
+    this.reconnectTimer = null;
+    if (this.eventSource) {
+      try { this.eventSource.close(); } catch (_) {}
+      this.eventSource = null;
+    }
+    if (clearListeners) queueListeners = [];
+  }
 }
-connectQueueSSE();
+
+const queueSSEManager = new QueueSSEManager();
+window.queueSSEManager = queueSSEManager;
+queueSSEManager.connect();
+window.addEventListener('beforeunload', () => queueSSEManager.disconnect());
 
 /* â”€â”€â”€ Client-side error log â”€â”€â”€ */
 const clientLogs = [];
@@ -122,6 +188,115 @@ function apiGet(path) { return api('GET', path); }
 function apiPost(path, body) { return api('POST', path, body); }
 function apiPut(path, body) { return api('PUT', path, body); }
 function apiDel(path) { return api('DELETE', path); }
+
+const API_ERROR_MESSAGES = {
+  400: 'Yeu cau khong hop le',
+  401: 'Can dang nhap lai',
+  403: 'Khong co quyen truy cap',
+  404: 'Khong tim thay tai nguyen',
+  429: 'Qua nhieu yeu cau, hay thu lai sau',
+  500: 'Loi server, hay thu lai sau',
+  503: 'Server dang ban, hay thu lai sau',
+};
+
+function getErrorMessage(status, defaultMsg) {
+  return API_ERROR_MESSAGES[status] || defaultMsg || 'Loi khong xac dinh';
+}
+
+async function apiWithErrorHandling(method, path, body = null) {
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (body !== null && body !== undefined) opts.body = JSON.stringify(body);
+  try {
+    const res = await fetch(API_BASE + path, opts);
+    if (!res.ok) {
+      const errBody = await res.text().catch(() => '');
+      const error = new Error(getErrorMessage(res.status, errBody.slice(0, 120)));
+      error.status = res.status;
+      error.body = errBody;
+      throw error;
+    }
+    return await res.json();
+  } catch (e) {
+    const msg = `API ${method} ${path} failed: ${e.message}`;
+    console.warn(msg);
+    addClientLog('error', msg, e.stack || '');
+    showToast(e.message || msg, 'error', 5000);
+    return null;
+  }
+}
+
+class ValidationError extends Error {
+  constructor(message, rule, value) {
+    super(message);
+    this.name = 'ValidationError';
+    this.rule = rule;
+    this.value = value;
+  }
+}
+
+const ValidationRules = {
+  filePath: {
+    validate(value) {
+      if (!value || typeof value !== 'string') return false;
+      const trimmed = value.trim();
+      if (!trimmed) return false;
+      const pathWithoutDrive = trimmed.replace(/^[a-zA-Z]:[\\/]/, '');
+      return !/[<>"|?*\n\r\t]/.test(pathWithoutDrive);
+    },
+    message: 'Duong dan file khong hop le',
+  },
+  videoFile: {
+    validate(path) {
+      if (!ValidationRules.filePath.validate(path)) return false;
+      return /\.(mp4|avi|mov|mkv|flv|webm|m4v|mpg|mpeg)$/i.test(path);
+    },
+    message: 'File phai la video hop le',
+  },
+  timestamp: {
+    validate(value, maxDuration = 86400) {
+      const num = Number(value);
+      return Number.isFinite(num) && num >= 0 && num <= maxDuration;
+    },
+    message: 'Thoi gian khong hop le',
+  },
+  timeRange: {
+    validate(value, endValue, maxDuration = 86400) {
+      const start = Array.isArray(value) ? value[0] : value;
+      const end = Array.isArray(value) ? value[1] : endValue;
+      const s = Number(start);
+      const e = Number(end);
+      return Number.isFinite(s) && Number.isFinite(e) && s >= 0 && e > s && e <= maxDuration;
+    },
+    message: 'Thoi gian bat dau phai nho hon thoi gian ket thuc',
+  },
+  language: {
+    validate(lang) {
+      return ['vi', 'en', 'zh', 'es', 'fr', 'de', 'ja', 'ko', 'ar', 'pt', 'ru'].includes(lang);
+    },
+    message: 'Ngon ngu khong duoc ho tro',
+  },
+  projectName: {
+    validate(name) {
+      return typeof name === 'string' && /^[a-zA-Z0-9_\- ]{1,100}$/.test(name.trim());
+    },
+    message: 'Ten du an phai tu 1-100 ky tu',
+  },
+  pathArray: {
+    validate(paths) {
+      return Array.isArray(paths) && paths.length >= 2 && paths.every(p => ValidationRules.filePath.validate(p));
+    },
+    message: 'Can it nhat 2 duong dan file hop le',
+  },
+};
+
+function validate(value, rule, customMessage, ...args) {
+  const ruleObj = ValidationRules[rule];
+  if (!ruleObj) throw new Error(`Unknown validation rule: ${rule}`);
+  if (!ruleObj.validate(value, ...args)) {
+    throw new ValidationError(customMessage || ruleObj.message, rule, value);
+  }
+  return true;
+}
 
 /* â”€â”€â”€ Health check & Stats â”€â”€â”€ */
 async function loadDashboard() {
@@ -1494,25 +1669,67 @@ document.getElementById('btn-edit-flip')?.addEventListener('click', async () => 
   addTaskRow();
 });
 
-document.getElementById('btn-edit-split')?.addEventListener('click', async () => {
-  const start = prompt('Thá»i gian báº¯t Ä‘áº§u (giÃ¢y):', '0');
-  if (start === null) return;
-  const end = prompt('Thá»i gian káº¿t thÃºc (giÃ¢y):', '10');
-  if (end === null) return;
-  await apiPost('/edit/split', {
-    video_path: document.getElementById('inp-video-path')?.value || document.getElementById('inp-srt-path')?.value || '',
-    operations: [{ type: 'split', start: parseFloat(start), end: parseFloat(end) }],
-  });
-  addTaskRow();
+document.getElementById('btn-edit-split')?.addEventListener('click', async (event) => {
+  const btn = event.currentTarget;
+  const originalHTML = btn.innerHTML;
+  try {
+    const start = prompt('Thoi gian bat dau (giay):', '0');
+    if (start === null) return;
+    const end = prompt('Thoi gian ket thuc (giay):', '10');
+    if (end === null) return;
+
+    validate(start, 'timestamp', 'Thoi gian bat dau khong hop le');
+    validate(end, 'timestamp', 'Thoi gian ket thuc khong hop le');
+    validate([start, end], 'timeRange');
+
+    const videoPath = document.getElementById('inp-video-path')?.value?.trim() || '';
+    validate(videoPath, 'videoFile', 'Vui long chon file video hop le');
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Dang cat...';
+    const res = await apiPost('/edit/split', {
+      video_path: videoPath,
+      operations: [{ type: 'split', start: Number(start), end: Number(end) }],
+    });
+    if (res) {
+      showToast('Da gui lenh cat video', 'success');
+      addTaskRow();
+    }
+  } catch (error) {
+    showToast(error.message || String(error), error instanceof ValidationError ? 'warn' : 'error');
+    addClientLog('error', 'Split video failed', error.stack || error.message || String(error));
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = originalHTML;
+  }
 });
 
-document.getElementById('btn-edit-merge')?.addEventListener('click', async () => {
-  const inp = prompt('Nháº­p Ä‘Æ°á»ng dáº«n cÃ¡c video (phÃ¢n cÃ¡ch báº±ng dáº¥u pháº©y):', '');
-  if (!inp) return;
-  const paths = inp.split(',').map(p => p.trim()).filter(Boolean);
-  if (paths.length < 2) return;
-  await apiPost('/edit/merge', paths);
-  addTaskRow();
+document.getElementById('btn-edit-merge')?.addEventListener('click', async (event) => {
+  const btn = event.currentTarget;
+  const originalHTML = btn.innerHTML;
+  try {
+    const inp = prompt('Nhap duong dan cac video, cach nhau bang dau phay:', '');
+    if (!inp) return;
+    const paths = inp.split(',').map(p => p.trim()).filter(Boolean);
+    validate(paths, 'pathArray', 'Can it nhat 2 video hop le');
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Dang ghep...';
+    const res = await apiPost('/edit/merge', {
+      video_paths: paths,
+      output_format: 'mp4',
+    });
+    if (res) {
+      showToast('Da gui lenh ghep video', 'success');
+      addTaskRow();
+    }
+  } catch (error) {
+    showToast(error.message || String(error), error instanceof ValidationError ? 'warn' : 'error');
+    addClientLog('error', 'Merge video failed', error.stack || error.message || String(error));
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = originalHTML;
+  }
 });
 
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• SUBTITLE TAB HANDLERS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
@@ -2619,7 +2836,7 @@ document.getElementById('btn-branding-logo')?.addEventListener('click', async ()
 document.getElementById('btn-branding-text')?.addEventListener('click', async () => {
   const videoPath = document.getElementById('inp-video-path')?.value || document.getElementById('inp-srt-path')?.value || '';
   if (!videoPath) { alert('ChÆ°a chá»n video'); return; }
-  const text = prompt('VÄƒn báº£n chÃ¨n:', 'RichReviewTool');
+  const text = prompt('VÄƒn báº£n chÃ¨n:', '0xForge');
   if (!text) return;
   await apiPost('/enhance/branding/text', { video_path: videoPath, text, position: 'bottom', font_size: 48 });
   addTaskRow();
@@ -3382,6 +3599,111 @@ document.querySelectorAll('.nav-item').forEach(item => {
     else if (navTab === 'voice') runSidebarAction('tab_voice');
     else if (navTab === 'export') runSidebarAction('tab_export');
     else if (navTab === 'ai') runSidebarAction('tab_ai');
+  }, true);
+});
+
+const TRANSLATION_ENGINES = {
+  gpt: { name: 'GPT', supportsLanguages: ['en', 'vi', 'zh', 'es', 'fr', 'de', 'ja', 'ko'] },
+  gemini: { name: 'Gemini', supportsLanguages: ['en', 'vi', 'zh', 'es', 'fr', 'de', 'ja', 'ko'] },
+  nllb: { name: 'NLLB-200', supportsLanguages: ['en', 'vi', 'zh', 'es', 'fr', 'de', 'ja', 'ko', 'ar', 'pt', 'ru'] },
+  marian: { name: 'MarianMT', supportsLanguages: ['en', 'vi', 'zh'] },
+};
+
+function getSelectedLanguageCode(selectId, fallback) {
+  const select = document.getElementById(selectId);
+  if (!select) return fallback;
+  const value = (select.value || select.options[select.selectedIndex]?.text || '').toLowerCase();
+  if (value.includes('english') || value.includes('anh') || value === 'en') return 'en';
+  if (value.includes('china') || value.includes('trung') || value === 'zh') return 'zh';
+  if (value.includes('japan') || value.includes('nhat') || value === 'ja') return 'ja';
+  if (value.includes('korea') || value.includes('han') || value === 'ko') return 'ko';
+  if (value.includes('vietnam') || value.includes('viet') || value === 'vi') return 'vi';
+  if (selectId === 'sel-lang-from') {
+    return ['en', 'zh', 'ja', 'ko'][select.selectedIndex] || fallback;
+  }
+  return ['vi', 'en'][select.selectedIndex] || fallback;
+}
+
+async function waitTranslationJob(jobId, btn, outputName) {
+  return new Promise(resolve => {
+    const poll = setInterval(async () => {
+      const prog = await apiGet(`/subtitle/translate-progress/${jobId}`);
+      if (!prog) return;
+      const pct = Math.max(0, Math.min(100, Number(prog.progress || 0)));
+      btn.innerHTML = `<i class="ri-loader-4-line ri-spin"></i> ${pct}%`;
+      if (prog.status === 'done') {
+        clearInterval(poll);
+        resolve(prog.translated || prog.translated_text || '');
+      } else if (prog.status === 'error') {
+        clearInterval(poll);
+        showToast(prog.error || 'Dich subtitle that bai', 'error');
+        resolve('');
+      }
+    }, 600);
+  });
+}
+
+async function handleSubtitleTranslation(engine) {
+  const config = TRANSLATION_ENGINES[engine];
+  if (!config) throw new Error(`Unknown translation engine: ${engine}`);
+
+  const btn = document.getElementById(`btn-sub-trans-${engine}`);
+  if (!btn) return;
+  const originalHTML = btn.innerHTML;
+
+  try {
+    const text = await getSubtitleText();
+    if (!text || !text.trim()) {
+      showToast('Chua tai phu de.', 'warn');
+      return;
+    }
+
+    const sourceLang = getSelectedLanguageCode('sel-lang-from', 'en');
+    const targetLang = getSelectedLanguageCode('sel-lang-to', 'vi');
+    validate(sourceLang, 'language');
+    validate(targetLang, 'language');
+
+    if (!config.supportsLanguages.includes(sourceLang) || !config.supportsLanguages.includes(targetLang)) {
+      showToast(`${config.name} khong ho tro cap ngon ngu nay`, 'warn');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Dang dich...';
+    const response = await apiPost('/subtitle/translate', {
+      text,
+      engine,
+      source_lang: sourceLang,
+      target_lang: targetLang,
+      project_id: currentProjectId || null,
+    });
+    if (!response) return;
+
+    let translated = response.translated_text || response.translated || '';
+    if (response.job_id) {
+      translated = await waitTranslationJob(response.job_id, btn, `translated_${engine}.srt`);
+    }
+
+    if (translated) {
+      showTransResult(translated, `translated_${engine}.srt`);
+    }
+    addTaskRow();
+    showToast(`Da gui lenh dich ${config.name}`, 'success');
+  } catch (error) {
+    showToast(error.message || String(error), error instanceof ValidationError ? 'warn' : 'error');
+    addClientLog('error', `Translation ${engine} failed`, error.stack || error.message || String(error));
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = originalHTML;
+  }
+}
+
+Object.keys(TRANSLATION_ENGINES).forEach(engine => {
+  const btn = document.getElementById(`btn-sub-trans-${engine}`);
+  btn?.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    handleSubtitleTranslation(engine);
   }, true);
 });
 

@@ -88,6 +88,17 @@ def queue_stats():
     }
 
 
+@router.get("/worker")
+def worker_status():
+    from ..workers.ffmpeg_worker import get_worker
+    worker = get_worker()
+    return {
+        "alive": worker.is_alive,
+        "active": worker.active_count,
+        "max_workers": worker.max_workers,
+    }
+
+
 @router.post("/{item_id}/retry")
 def retry(item_id: int):
     retry_failed(item_id)

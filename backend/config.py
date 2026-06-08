@@ -41,6 +41,7 @@ FPT_API_KEY = os.environ.get("FPT_API_KEY", "4pgQbwd6INSU8YWqNefwOawOI2gALxz7")
 
 VOCAL_SEPARATION_ENABLED = os.environ.get("VOCAL_SEPARATION_ENABLED", "true").lower() == "true"
 MAX_QUEUE_WORKERS = int(os.environ.get("MAX_QUEUE_WORKERS", "2"))
+QUEUE_JOB_TIMEOUT_MINUTES = int(os.environ.get("QUEUE_JOB_TIMEOUT_MINUTES", "60"))
 PORT = int(os.environ.get("PORT", "7860"))
 HOST = os.environ.get("HOST", "127.0.0.1")
 DEFAULT_FPS = 30

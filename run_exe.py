@@ -74,7 +74,7 @@ for _ in range(100):
 
 def main():
     webview.create_window(
-        title="RichReviewTool V2.0.0",
+        title="0xForge V2.0.0",
         url=f"http://127.0.0.1:{_server_port[0]}/",
         width=1400,
         height=900,

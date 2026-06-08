@@ -79,7 +79,7 @@ class EnhanceRequest(BaseModel):
     temperature: Optional[float] = None
     vignette: Optional[float] = None
     watermark: Optional[bool] = False
-    watermark_text: Optional[str] = "RichReviewTool"
+    watermark_text: Optional[str] = "0xForge"
     transition: Optional[bool] = False
     motion_blur: Optional[bool] = False
     zoom: Optional[bool] = False

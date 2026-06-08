@@ -114,10 +114,10 @@ html, body {
 }
 .logo-icon {
   width: 26px; height: 26px;
-  background: #c0392b;
+  background: var(--accent);
   border-radius: 4px;
   display: flex; align-items: center; justify-content: center;
-  font-size: 11px; color: #fff; font-weight: 700;
+  font-size: 13px; color: #fff; font-weight: 700;
   box-shadow: 0 1px 4px rgba(0,0,0,0.4);
 }
 .logo-text {

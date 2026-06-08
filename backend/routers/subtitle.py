@@ -313,9 +313,13 @@ def ocr_video_endpoint(data: dict, bg: BackgroundTasks):
     if not video_path or not os.path.exists(video_path):
         raise HTTPException(400, "ÄÆ°á»ng dáº«n video khÃ´ng há»£p lá»‡")
 
-    from ..services.ocr_service import extract_hard_subtitles, is_ocr_available
+    from ..services.ocr_service import is_ocr_available
     if not is_ocr_available():
         raise HTTPException(400, "RapidOCR hoáº·c OpenCV chÆ°a Ä‘Æ°á»£c cÃ i Ä‘áº·t.")
 
-    bg.add_task(extract_hard_subtitles, video_path, project_id, region)
-    return {"message": "ÄÃ£ báº¯t Ä‘áº§u trÃ­ch xuáº¥t sub cá»©ng báº±ng OCR. Tiáº¿n trÃ¬nh Ä‘ang cháº¡y ngáº§m..."}
+    from ..services.queue_manager import add_queue_item
+    item_id = add_queue_item(project_id, "ocr_hardsub", video_path, {"region": region}, priority=1)
+    return {
+        "id": item_id,
+        "message": "Da dua RapidOCR sub cung vao hang cho.",
+    }

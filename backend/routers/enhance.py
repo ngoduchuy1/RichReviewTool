@@ -27,7 +27,7 @@ def apply_enhancements(data: EnhanceRequest, bg: BackgroundTasks):
     if getattr(data, "transition", False):
         filters.append("fade=t=in:st=0:d=1")
     if getattr(data, "watermark", False):
-        text = getattr(data, "watermark_text", "RichReviewTool")
+        text = getattr(data, "watermark_text", "0xForge")
         filters.append(f"drawtext=text='{text}':fontcolor=white@0.5:fontsize=48:x=w-tw-20:y=h-th-20")
     if getattr(data, "speed_ramp", False):
         filters.append("setpts=0.5*PTS")
@@ -69,7 +69,7 @@ def logo_overlay(data: dict, bg: BackgroundTasks):
 @router.post("/branding/text")
 def text_overlay(data: dict, bg: BackgroundTasks):
     video_path = data.get("video_path", "")
-    text = data.get("text", "RichReviewTool")
+    text = data.get("text", "0xForge")
     position = data.get("position", "bottom")
     font_size = data.get("font_size", 48)
     color = data.get("color", "white")

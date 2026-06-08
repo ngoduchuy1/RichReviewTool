@@ -33,6 +33,10 @@ def run_pipeline(queue_item: dict) -> bool:
             return _tts(item_id, project_id, params)
         elif ptype == "render":
             return _render(item_id, project_id, input_path, params)
+        elif ptype == "ocr_hardsub":
+            return _ocr_hardsub(item_id, project_id, input_path, params)
+        elif ptype == "remove_hardsub":
+            return _remove_hardsub(item_id, project_id, input_path, params)
         elif ptype == "export_audio":
             return _export_audio(item_id, project_id, input_path, params)
         elif ptype == "split":
@@ -188,6 +192,52 @@ def _tts(item_id: int, project_id: int, params: dict) -> bool:
 
 
 # ─── Render Pipeline ───
+
+def _ocr_hardsub(item_id: int, project_id: int, video_path: str, params: dict) -> bool:
+    if not video_path or not os.path.exists(video_path):
+        raise FileNotFoundError(f"Video not found: {video_path}")
+
+    _log(item_id, "info", "Running RapidOCR hard-sub extraction")
+    _update(item_id, "running", 10)
+    from .ocr_service import extract_hard_subtitles
+
+    result = extract_hard_subtitles(video_path, project_id, params.get("region") or params.get("subtitle_region"))
+    if result.get("error"):
+        _update(item_id, "failed", error=result["error"])
+        return False
+
+    out = result.get("srt_path", "")
+    if out:
+        _set_output_path(item_id, out)
+        _register_asset("subtitle", out, project_id)
+    _update(item_id, "completed", 100)
+    return True
+
+
+def _remove_hardsub(item_id: int, project_id: int, video_path: str, params: dict) -> bool:
+    if not video_path or not os.path.exists(video_path):
+        raise FileNotFoundError(f"Video not found: {video_path}")
+
+    output_name = Path(params.get("output_name") or f"project_{project_id}_hardsub_blur.mp4").stem
+    output_dir = Path(params.get("output_dir") or (EXPORTS_DIR / f"project_{project_id}"))
+    output_dir.mkdir(parents=True, exist_ok=True)
+    out_path = str(output_dir / f"{output_name}.mp4")
+    region = params.get("region") or params.get("subtitle_region") or {"x": 0.0, "y": 0.75, "width": 1.0, "height": 0.25}
+
+    _log(item_id, "info", "Removing hard subtitle by blur mask")
+    _update(item_id, "running", 15)
+    from .ffmpeg_utils import blur_subtitle_region
+
+    ok = blur_subtitle_region(video_path, out_path, region)
+    if not ok or not os.path.exists(out_path):
+        _update(item_id, "failed", error="Hard-sub blur failed")
+        return False
+
+    _set_output_path(item_id, out_path)
+    _register_asset("videos", out_path, project_id)
+    _update(item_id, "completed", 100)
+    return True
+
 
 def _render(item_id: int, project_id: int, video_path: str, params: dict) -> bool:
     if not video_path or not os.path.exists(video_path):

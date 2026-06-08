@@ -9,13 +9,13 @@ $rootDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $rootDir
 
 $specFile = "RichReviewTool.spec"
-$exeName = "RichReviewTool.exe"
+$exeName = "0xForge.exe"
 $distPath = Join-Path $rootDir "dist\$exeName"
 $startTime = Get-Date
 
 Write-Host ""
 Write-Host "============================================" -ForegroundColor Cyan
-Write-Host "  RichReviewTool build" -ForegroundColor Cyan
+Write-Host "  0xForge build" -ForegroundColor Cyan
 Write-Host "============================================" -ForegroundColor Cyan
 Write-Host ""
 

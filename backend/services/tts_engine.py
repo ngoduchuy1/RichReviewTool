@@ -5,6 +5,7 @@ import threading
 import asyncio
 from pathlib import Path
 from ..config import AZURE_TTS_KEY, AZURE_TTS_REGION, ELEVENLABS_API_KEY
+from .text_normalizer import normalize_for_tts
 
 
 TTS_TIMEOUT = 300  # seconds (increased for chunked synthesis)
@@ -100,6 +101,8 @@ def _concat_audio_ffmpeg(file_paths: list, output_path: str) -> bool:
 
 
 def synthesize(text: str, provider: str, voice: str, speed: float, output_path: str, api_key: str = None):
+    lang = (voice or "vi").split("-")[0].lower()
+    text = normalize_for_tts(text, lang=lang)
     if provider == "edge":
         _edge_tts(text, voice, speed, output_path)
     elif provider == "fpt":
@@ -317,10 +320,67 @@ def _get_audio_duration(path: str) -> float:
             return 0.0
 
 
+def _process_single_segment(idx, seg, provider, voice, speed, base_dir, api_key, sample_rate) -> tuple:
+    from ..config import FFMPEG_PATH
+    start_time = seg["start"]
+    end_time = seg["end"]
+    lang = (voice or "vi").split("-")[0].lower()
+    text = normalize_for_tts(seg["text"], lang=lang)
+    
+    temp_raw = os.path.join(base_dir, f"_temp_raw_{idx}_{os.getpid()}.wav")
+    temp_norm = os.path.join(base_dir, f"_temp_norm_{idx}_{os.getpid()}.wav")
+    
+    try:
+        synthesize(text, provider, voice, speed, temp_raw, api_key=api_key)
+        if not os.path.exists(temp_raw) or os.path.getsize(temp_raw) == 0:
+            return idx, None, None, "No raw audio generated"
+            
+        synth_dur = _get_audio_duration(temp_raw)
+        target_dur = end_time - start_time
+        
+        if synth_dur > target_dur and target_dur > 0.1:
+            tempo = min(synth_dur / target_dur, 2.0)
+            
+            filters = []
+            while tempo > 2.0:
+                filters.append("atempo=2.0")
+                tempo /= 2.0
+            if tempo > 0.5:
+                filters.append(f"atempo={tempo:.2f}")
+                
+            filter_str = ",".join(filters)
+            cmd = [
+                FFMPEG_PATH, "-y",
+                "-i", temp_raw,
+                "-filter:a", filter_str,
+                "-ar", str(sample_rate), "-ac", "1",
+                "-c:a", "pcm_s16le", temp_norm
+            ]
+        else:
+            cmd = [
+                FFMPEG_PATH, "-y",
+                "-i", temp_raw,
+                "-ar", str(sample_rate), "-ac", "1",
+                "-c:a", "pcm_s16le", temp_norm
+            ]
+            
+        startupinfo = subprocess.STARTUPINFO()
+        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        subprocess.run(cmd, capture_output=True, startupinfo=startupinfo, creationflags=subprocess.CREATE_NO_WINDOW)
+        
+        if not os.path.exists(temp_norm) or os.path.getsize(temp_norm) == 0:
+            return idx, temp_raw, None, "No normalized audio generated"
+            
+        return idx, temp_raw, temp_norm, None
+    except Exception as e:
+        return idx, (temp_raw if os.path.exists(temp_raw) else None), (temp_norm if os.path.exists(temp_norm) else None), str(e)
+
+
 def synthesize_timeline(srt_content: str, provider: str, voice: str, speed: float, output_path: str, api_key: str = None, progress_cb=None):
     """Synthesize each subtitle segment, align it to its timeline start, speed it up if necessary, and mix."""
     import wave
     import json
+    from concurrent.futures import ThreadPoolExecutor, as_completed
     from ..config import FFMPEG_PATH
     
     segments = _parse_srt(srt_content)
@@ -332,8 +392,44 @@ def synthesize_timeline(srt_content: str, provider: str, voice: str, speed: floa
     temp_files = []
     sample_rate = 22050
     bytes_per_sample = 2
+    base_dir = os.path.dirname(output_path)
     
     try:
+        # Run synthesis and processing tasks in parallel using a thread pool
+        futures = {}
+        completed_count = 0
+        results = [None] * len(segments)
+        
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            for idx, seg in enumerate(segments):
+                f = executor.submit(
+                    _process_single_segment,
+                    idx, seg, provider, voice, speed, base_dir, api_key, sample_rate
+                )
+                futures[f] = idx
+                
+            for f in as_completed(futures):
+                idx = futures[f]
+                completed_count += 1
+                if progress_cb:
+                    try:
+                        progress_cb(completed_count, len(segments))
+                    except Exception:
+                        pass
+                
+                try:
+                    res_idx, raw_p, norm_p, err = f.result()
+                    if err:
+                        print(f"[TTS] Segment {res_idx} failed: {err}")
+                    results[res_idx] = (raw_p, norm_p)
+                    if raw_p:
+                        temp_files.append(raw_p)
+                    if norm_p:
+                        temp_files.append(norm_p)
+                except Exception as e:
+                    print(f"[TTS] Segment {idx} threw exception: {e}")
+
+        # Assemble the final wave file sequentially in timeline order
         with wave.open(output_path, "wb") as out_wf:
             out_wf.setnchannels(1)
             out_wf.setsampwidth(bytes_per_sample)
@@ -342,63 +438,12 @@ def synthesize_timeline(srt_content: str, provider: str, voice: str, speed: floa
             current_frame = 0
             
             for idx, seg in enumerate(segments):
-                if progress_cb:
-                    try:
-                        progress_cb(idx, len(segments))
-                    except Exception:
-                        pass
                 start_time = seg["start"]
-                end_time = seg["end"]
-                text = seg["text"]
-                print(f"[TTS] {idx+1}/{len(segments)}")
-                
-                base_dir = os.path.dirname(output_path)
-                temp_raw = os.path.join(base_dir, f"_temp_raw_{idx}_{os.getpid()}.wav")
-                temp_norm = os.path.join(base_dir, f"_temp_norm_{idx}_{os.getpid()}.wav")
-                temp_files.extend([temp_raw, temp_norm])
-                
-                try:
-                    synthesize(text, provider, voice, speed, temp_raw, api_key=api_key)
-                except Exception as e:
-                    print(f"[TTS] Segment {idx} synthesis failed (skipping): {e}")
-                
-                if not os.path.exists(temp_raw) or os.path.getsize(temp_raw) == 0:
+                res = results[idx]
+                if not res or not res[1]:
                     continue
-                    
-                synth_dur = _get_audio_duration(temp_raw)
-                target_dur = end_time - start_time
+                temp_norm = res[1]
                 
-                if synth_dur > target_dur and target_dur > 0.1:
-                    tempo = min(synth_dur / target_dur, 2.0)
-                    
-                    filters = []
-                    while tempo > 2.0:
-                        filters.append("atempo=2.0")
-                        tempo /= 2.0
-                    if tempo > 0.5:
-                        filters.append(f"atempo={tempo:.2f}")
-                        
-                    filter_str = ",".join(filters)
-                    cmd = [
-                        FFMPEG_PATH, "-y",
-                        "-i", temp_raw,
-                        "-filter:a", filter_str,
-                        "-ar", str(sample_rate), "-ac", "1",
-                        "-c:a", "pcm_s16le", temp_norm
-                    ]
-                else:
-                    cmd = [
-                        FFMPEG_PATH, "-y",
-                        "-i", temp_raw,
-                        "-ar", str(sample_rate), "-ac", "1",
-                        "-c:a", "pcm_s16le", temp_norm
-                    ]
-                    
-                subprocess.run(cmd, capture_output=True, creationflags=subprocess.CREATE_NO_WINDOW)
-                
-                if not os.path.exists(temp_norm) or os.path.getsize(temp_norm) == 0:
-                    continue
-                    
                 start_frame = int(start_time * sample_rate)
                 if start_frame > current_frame:
                     silence_frames = start_frame - current_frame
@@ -409,11 +454,6 @@ def synthesize_timeline(srt_content: str, provider: str, voice: str, speed: floa
                     data = norm_wf.readframes(norm_wf.getnframes())
                     out_wf.writeframes(data)
                     current_frame += len(data) // bytes_per_sample
-            if progress_cb:
-                try:
-                    progress_cb(len(segments), len(segments))
-                except Exception:
-                    pass
                     
     finally:
         for f in temp_files:

@@ -1,12 +1,12 @@
 @echo off
 cd /d "%~dp0"
-title RichReviewTool V2
+title 0xForge V2
 
 chcp 65001 >nul
 
 echo ============================================
-echo   RichReviewTool V2.0.0
-echo   Rich Tool RevMovie
+echo   0xForge V2.0.0
+echo   0xForge Tool
 echo ============================================
 echo.
 

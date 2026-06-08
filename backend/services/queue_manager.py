@@ -47,7 +47,7 @@ def retry_failed(item_id: int = None):
 
 def pause_all() -> int:
     with db_cursor() as cur:
-        cur.execute("UPDATE queue_items SET status='paused' WHERE status='running' OR status='waiting'")
+        cur.execute("UPDATE queue_items SET status='paused' WHERE status='waiting'")
         count = cur.rowcount
     from .event_bus import event_bus
     event_bus.publish("queue_changed")
@@ -74,7 +74,20 @@ def get_queue(status: str = None) -> list:
 
 def clear_all():
     with db_cursor() as cur:
-        cur.execute("DELETE FROM job_logs")
-        cur.execute("DELETE FROM queue_items")
+        cur.execute("DELETE FROM job_logs WHERE queue_item_id IN (SELECT id FROM queue_items WHERE status!='running') OR queue_item_id IS NULL")
+        cur.execute("DELETE FROM queue_items WHERE status!='running'")
     from .event_bus import event_bus
     event_bus.publish("queue_changed")
+
+
+def reset_stale_running(reason: str = "App restarted before job finished") -> int:
+    with db_cursor() as cur:
+        cur.execute(
+            "UPDATE queue_items SET status='failed', error=?, updated_at=? WHERE status='running'",
+            (reason, datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
+        )
+        count = cur.rowcount
+    if count:
+        from .event_bus import event_bus
+        event_bus.publish("queue_changed")
+    return count

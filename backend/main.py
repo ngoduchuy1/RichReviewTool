@@ -52,7 +52,7 @@ async def lifespan(app: FastAPI):
     print("[Server] Queue worker stopped")
 
 
-app = FastAPI(title="RichReviewTool API", version="2.0.0", lifespan=lifespan)
+app = FastAPI(title="0xForge API", version="2.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
