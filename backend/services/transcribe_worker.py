@@ -1,16 +1,18 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 import sys
 import json
 import argparse
-from pathlib import Path
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("audio_path")
     parser.add_argument("--language", default="vi")
     parser.add_argument("--model", default="base")
+    parser.add_argument("--device", default="auto")
+    parser.add_argument("--compute-type", default="auto")
     parser.add_argument("--whisperx", action="store_true", help="Use WhisperX for word-level alignment")
     args = parser.parse_args()
+    device, compute_type = _resolve_runtime(args.device, args.compute_type)
 
     use_whisperx = args.whisperx
     if use_whisperx:
@@ -22,9 +24,6 @@ def main():
 
     if use_whisperx:
         try:
-            device = "cpu"
-            compute_type = "int8"
-
             # 1. Load model and transcribe
             model = whisperx.load_model(args.model, device, compute_type=compute_type, language=args.language)
             audio = whisperx.load_audio(args.audio_path)
@@ -86,7 +85,7 @@ def main():
         sys.exit(1)
 
     try:
-        model = WhisperModel(args.model, device="cpu", compute_type="int8")
+        model = WhisperModel(args.model, device=device, compute_type=compute_type)
         segments, info = model.transcribe(args.audio_path, language=args.language)
         seg_list = list(segments)
 
@@ -112,6 +111,24 @@ def main():
     except Exception as e:
         print(json.dumps({"error": str(e)}, ensure_ascii=False))
         sys.exit(1)
+
+
+def _resolve_runtime(device_arg: str, compute_arg: str):
+    device = (device_arg or "auto").lower()
+    if device == "auto":
+        device = "cpu"
+        try:
+            import torch
+            if torch.cuda.is_available():
+                device = "cuda"
+        except Exception:
+            pass
+
+    compute_type = (compute_arg or "auto").lower()
+    if compute_type == "auto":
+        compute_type = "float16" if device == "cuda" else "int8"
+
+    return device, compute_type
 
 
 def _fmt_time(secs):

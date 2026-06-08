@@ -1,18 +1,27 @@
-﻿from fastapi import APIRouter, HTTPException, BackgroundTasks, UploadFile, File
+from pathlib import Path
+
+from fastapi import APIRouter, HTTPException, UploadFile, File
 from ..models.schemas import SubtitleRequest, TranslateRequest
-from ..services.whisper_stt import transcribe
 from ..services.translator import translate_text, translate_srt_async, get_job
+from ..services.queue_manager import add_queue_item
+from ..services.path_allowlist import is_allowed_path
 from ..database import db_cursor
-from ..config import SUBTITLES_DIR
+from ..config import SUBTITLES_DIR, DATA_DIR
 import json
 
 router = APIRouter()
 
 
 @router.post("/transcribe")
-def transcribe_subtitle(data: SubtitleRequest, bg: BackgroundTasks):
-    bg.add_task(transcribe, data.source_path, data.language, data.project_id)
-    return {"message": "ÄÃ£ Ä‘Æ°a tiáº¿n trÃ¬nh chuyá»ƒn Ã¢m vÃ o hÃ ng Ä‘á»£i", "project_id": data.project_id}
+def transcribe_subtitle(data: SubtitleRequest):
+    item_id = add_queue_item(
+        data.project_id,
+        "transcribe",
+        data.source_path,
+        {"language": data.language, "whisperx": False, "vocal_separation": False},
+        priority=1,
+    )
+    return {"id": item_id, "message": "Da dua tien trinh chuyen am vao hang doi", "project_id": data.project_id}
 
 
 @router.post("/import")
@@ -97,19 +106,36 @@ def get_subtitles(project_id: int):
 
 def _resolve_path(path: str) -> str:
     """Resolve a potentially relative path against SUBTITLES_DIR."""
-    import os
     p = path.strip()
-    if os.path.isabs(p):
-        return p
-    # If path starts with "data/subtitles/", strip to just the filename
-    # and resolve against SUBTITLES_DIR directly
-    parts = p.replace("\\", "/").split("/")
-    # Take just the filename (last component)
-    filename = parts[-1]
-    candidate = str(SUBTITLES_DIR / filename)
-    if os.path.exists(candidate):
-        return candidate
-    return os.path.abspath(p)
+    if not p:
+        return ""
+
+    downloads_dir = Path.home() / "Downloads"
+    roots = [SUBTITLES_DIR.resolve(), DATA_DIR.resolve(), downloads_dir.resolve()]
+    candidates = []
+    raw = Path(p).expanduser()
+    if raw.is_absolute():
+        candidates.append(raw)
+    candidates.append(SUBTITLES_DIR / Path(p.replace("\\", "/")).name)
+
+    for candidate in candidates:
+        try:
+            resolved = candidate.resolve()
+        except Exception:
+            continue
+        if not resolved.exists() or not resolved.is_file():
+            continue
+        if resolved.suffix.lower() not in {".srt", ".ass", ".vtt", ".ssa"}:
+            continue
+        if is_allowed_path(str(resolved)):
+            return str(resolved)
+        for root in roots:
+            try:
+                resolved.relative_to(root)
+                return str(resolved)
+            except ValueError:
+                pass
+    return ""
 
 
 @router.post("/read-file")
@@ -141,9 +167,10 @@ def translate_subtitle(data: TranslateRequest):
     import os
     text = data.text
     # If text is a local file path, read it
-    if os.path.exists(text.strip()):
+    resolved_text_path = _resolve_path(text.strip())
+    if resolved_text_path and os.path.exists(resolved_text_path):
         try:
-            with open(text.strip(), "r", encoding="utf-8", errors="replace") as f:
+            with open(resolved_text_path, "r", encoding="utf-8", errors="replace") as f:
                 text = f.read()
         except Exception:
             pass
@@ -231,6 +258,14 @@ def extract_stream(data: dict):
     filename = os.path.basename(video_path)
     output_name = os.path.splitext(filename)[0] + f"_extracted_{stream_index}.srt"
     output_path = str(SUBTITLES_DIR / f"sub_{project_id}_{output_name}")
+    item_id = add_queue_item(
+        project_id,
+        "extract_subtitle_stream",
+        video_path,
+        {"stream_index": stream_index, "output_path": output_path},
+        priority=1,
+    )
+    return {"id": item_id, "path": output_path, "message": "Da dua trich xuat phu de vao hang doi"}
 
     cmd = [
         FFMPEG_PATH, "-y",
@@ -268,7 +303,7 @@ def extract_stream(data: dict):
 
 
 @router.post("/transcribe-video")
-def transcribe_video_endpoint(data: dict, bg: BackgroundTasks):
+def transcribe_video_endpoint(data: dict):
     import os
     video_path = data.get("path", "")
     project_id = data.get("project_id", 0)
@@ -279,9 +314,14 @@ def transcribe_video_endpoint(data: dict, bg: BackgroundTasks):
     if not video_path or not os.path.exists(video_path):
         raise HTTPException(400, "ÄÆ°á»ng dáº«n video khÃ´ng há»£p lá»‡")
 
-    from ..services.whisper_stt import transcribe_video
-    bg.add_task(transcribe_video, video_path, language, project_id, vocal_separation, use_whisperx)
-    return {"message": "ÄÃ£ báº¯t Ä‘áº§u nháº­n dáº¡ng giá»ng nÃ³i (STT) tá»« video. Tiáº¿n trÃ¬nh Ä‘ang cháº¡y ngáº§m..."}
+    item_id = add_queue_item(
+        project_id,
+        "transcribe",
+        video_path,
+        {"language": language, "vocal_separation": bool(vocal_separation), "whisperx": bool(use_whisperx)},
+        priority=1,
+    )
+    return {"id": item_id, "message": "Da dua Whisper STT vao hang doi"}
 
 
 @router.post("/export")
@@ -304,7 +344,7 @@ def export_subtitle(project_id: int, fmt: str = "srt", font: str = "Arial", size
 
 
 @router.post("/ocr-video")
-def ocr_video_endpoint(data: dict, bg: BackgroundTasks):
+def ocr_video_endpoint(data: dict):
     import os
     video_path = data.get("path", "")
     project_id = data.get("project_id", 0)
@@ -317,7 +357,6 @@ def ocr_video_endpoint(data: dict, bg: BackgroundTasks):
     if not is_ocr_available():
         raise HTTPException(400, "RapidOCR hoáº·c OpenCV chÆ°a Ä‘Æ°á»£c cÃ i Ä‘áº·t.")
 
-    from ..services.queue_manager import add_queue_item
     item_id = add_queue_item(project_id, "ocr_hardsub", video_path, {"region": region}, priority=1)
     return {
         "id": item_id,

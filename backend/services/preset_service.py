@@ -4,13 +4,36 @@ Structure: { voice: {}, subtitle: {}, export: {}, enhance: {} }
 Stored in data/presets/ as individual JSON files.
 """
 import json
-from pathlib import Path
 from ..database import db_cursor
 from ..config import PRESETS_DIR
 
 PRESET_EXT = ".json"
 
 DEFAULT_PRESETS = {
+    "draft_fast": {
+        "name": "Draft Fast",
+        "description": "Preview nhanh 720p, uu tien toc do",
+        "voice": {"provider": "edge", "voice": "vi-VN-NamMinhNeural", "speed": 1.0, "keep_bgm": True, "bgm_volume": 0.1},
+        "subtitle": {"font": "Arial", "size": 36, "color": "#FFFFFF", "stroke": 2, "shadow": "soft", "position": "bottom", "burn": True, "region": {"x": 0.1, "y": 0.78, "width": 0.8, "height": 0.15}},
+        "export": {"resolution": "1280x720", "fps": 30, "codec": "h264", "bitrate": "auto", "audio_bitrate": "128k", "format": "mp4", "gpu": "auto", "preset": "veryfast", "quality": "draft"},
+        "enhance": {"lut": "Cinematic", "brightness": 50, "contrast": 55, "saturation": 60, "vignette": 0, "watermark": False},
+    },
+    "nvenc_fast": {
+        "name": "NVENC Fast",
+        "description": "Render nhanh bang NVIDIA NVENC neu co GPU",
+        "voice": {"provider": "edge", "voice": "vi-VN-NamMinhNeural", "speed": 1.0, "keep_bgm": True, "bgm_volume": 0.1},
+        "subtitle": {"font": "Arial", "size": 42, "color": "#FFFFFF", "stroke": 2, "shadow": "soft", "position": "bottom", "burn": True, "region": {"x": 0.1, "y": 0.78, "width": 0.8, "height": 0.15}},
+        "export": {"resolution": "1920x1080", "fps": 30, "codec": "h264", "bitrate": "8M", "audio_bitrate": "192k", "format": "mp4", "gpu": "nvenc", "preset": "fast", "quality": "fast"},
+        "enhance": {"lut": "Cinematic", "brightness": 50, "contrast": 55, "saturation": 60, "vignette": 8, "watermark": True},
+    },
+    "quality": {
+        "name": "Quality",
+        "description": "Ban xuat chat luong cao, uu tien do net",
+        "voice": {"provider": "edge", "voice": "vi-VN-NamMinhNeural", "speed": 1.0, "keep_bgm": True, "bgm_volume": 0.1},
+        "subtitle": {"font": "Arial", "size": 42, "color": "#FFFFFF", "stroke": 2, "shadow": "soft", "position": "bottom", "burn": True, "region": {"x": 0.1, "y": 0.78, "width": 0.8, "height": 0.15}},
+        "export": {"resolution": "1920x1080", "fps": 30, "codec": "h264", "bitrate": "auto", "audio_bitrate": "192k", "format": "mp4", "gpu": "auto", "preset": "slow", "quality": "quality", "crf": "18"},
+        "enhance": {"lut": "Cinematic", "brightness": 50, "contrast": 55, "saturation": 60, "vignette": 12, "watermark": True},
+    },
     "movie_review": {
         "name": "Movie Review",
         "description": "Review phim 16:9 full HD",

@@ -2,12 +2,9 @@
 Asset Manager — scans directory trees and indexes media files.
 Watches for changes and caches asset metadata.
 """
-import os
 import json
-import time
 from pathlib import Path
 from ..config import DATA_DIR, CACHE_DIR
-from ..database import db_cursor
 
 MEDIA_EXTENSIONS = {
     "video": [".mp4", ".mkv", ".mov", ".avi", ".webm", ".flv", ".wmv", ".m4v"],

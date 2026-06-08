@@ -4,26 +4,123 @@ import os
 import re
 import shutil
 import tempfile
+import time
+from fractions import Fraction
 from pathlib import Path
 from ..config import FFMPEG_PATH, FFPROBE_PATH, EXPORTS_DIR, CACHE_DIR, VOICES_DIR, SUBTITLES_DIR
 
 
 _has_nvenc_cache = None
 
+
+def _startupinfo():
+    if not hasattr(subprocess, "STARTUPINFO"):
+        return None
+    info = subprocess.STARTUPINFO()
+    info.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+    return info
+
+
+def _creationflags():
+    return getattr(subprocess, "CREATE_NO_WINDOW", 0)
+
+
+def _parse_fps(value: str) -> float:
+    try:
+        return float(Fraction(value))
+    except Exception:
+        try:
+            return float(value)
+        except Exception:
+            return 0.0
+
+
+def _normalize_bitrate(value):
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text or text.lower() in {"auto", "tu dong", "tự động", "automatic"}:
+        return None
+    return text
+
+
+def _codec_name(params: dict) -> str:
+    codec = str(params.get("codec", "h264")).strip().lower()
+    return {"h265": "h265", "hevc": "h265", "h264": "h264", "av1": "av1"}.get(codec, "h264")
+
+
+def _selected_video_codec(params: dict) -> str:
+    codec = _codec_name(params)
+    gpu = str(params.get("gpu", "auto")).strip().lower()
+    use_nvenc = gpu in {"auto", "gpu", "nvenc", "nvidia"} and has_nvenc()
+    if gpu in {"cpu", "none", "off"}:
+        use_nvenc = False
+    if use_nvenc and codec == "h264":
+        return "h264_nvenc"
+    if use_nvenc and codec == "h265":
+        return "hevc_nvenc"
+    return {"h264": "libx264", "h265": "libx265", "av1": "libaom-av1"}.get(codec, "libx264")
+
+
+def _append_video_encoding_args(cmd: list, params: dict):
+    chosen_codec = _selected_video_codec(params)
+    cmd.extend(["-c:v", chosen_codec])
+
+    bitrate = _normalize_bitrate(params.get("bitrate"))
+    quality = str(params.get("quality", "")).lower()
+    preset = str(params.get("preset") or ("veryfast" if quality == "draft" else "medium")).lower()
+    crf = str(params.get("crf") or ("24" if quality == "draft" else "18"))
+
+    if "nvenc" in chosen_codec:
+        preset_map = {
+            "ultrafast": "p1",
+            "superfast": "p1",
+            "veryfast": "p2",
+            "faster": "p2",
+            "fast": "p3",
+            "medium": "p4",
+            "slow": "p5",
+            "slower": "p6",
+            "veryslow": "p7",
+            "p1": "p1",
+            "p2": "p2",
+            "p3": "p3",
+            "p4": "p4",
+            "p5": "p5",
+            "p6": "p6",
+            "p7": "p7",
+        }
+        nvenc_preset = preset_map.get(preset, "p2" if quality == "draft" else "p4")
+        if bitrate:
+            cmd.extend(["-preset", nvenc_preset, "-rc", "vbr", "-b:v", bitrate])
+        else:
+            cmd.extend(["-preset", nvenc_preset, "-rc", "vbr", "-cq", crf])
+        return
+
+    if chosen_codec in {"libx264", "libx265"}:
+        if bitrate:
+            cmd.extend(["-preset", preset, "-b:v", bitrate])
+        else:
+            cmd.extend(["-preset", preset, "-crf", crf])
+        return
+
+    if bitrate:
+        cmd.extend(["-b:v", bitrate])
+    else:
+        cmd.extend(["-crf", crf, "-b:v", "0", "-cpu-used", "6" if quality == "draft" else "4"])
+
 def has_nvenc() -> bool:
     global _has_nvenc_cache
     if _has_nvenc_cache is not None:
         return _has_nvenc_cache
     try:
-        startupinfo = subprocess.STARTUPINFO()
-        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
         res = subprocess.run(
             [FFMPEG_PATH, "-encoders"],
             capture_output=True,
             text=True,
             timeout=5,
-            startupinfo=startupinfo,
-            creationflags=subprocess.CREATE_NO_WINDOW
+            startupinfo=_startupinfo(),
+            creationflags=_creationflags()
         )
         _has_nvenc_cache = "h264_nvenc" in res.stdout
     except Exception:
@@ -32,7 +129,7 @@ def has_nvenc() -> bool:
 
 
 
-def run_ffmpeg(cmd: list, timeout: int = 3600) -> bool:
+def _run_ffmpeg_legacy(cmd: list, timeout: int = 3600) -> bool:
     full_cmd = [FFMPEG_PATH, "-y"] + cmd
     print(f"[FFmpeg] {' '.join(str(a) for a in full_cmd)}")
     try:
@@ -49,11 +146,91 @@ def run_ffmpeg(cmd: list, timeout: int = 3600) -> bool:
         print("[FFmpeg] NOT FOUND — install FFmpeg or set FFMPEG_PATH env")
         return False
 
+ 
+def run_ffmpeg(cmd: list, timeout: int = 3600, progress_cb=None, duration: float = None) -> bool:
+    use_progress = bool(progress_cb and duration and duration > 0)
+    progress_args = ["-nostats", "-progress", "pipe:1"] if use_progress else []
+    full_cmd = [FFMPEG_PATH, "-y"] + progress_args + cmd
+    print(f"[FFmpeg] {' '.join(str(a) for a in full_cmd)}")
+    if use_progress:
+        return _run_ffmpeg_with_progress(full_cmd, timeout, float(duration), progress_cb)
+
+    try:
+        subprocess.run(
+            full_cmd,
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            startupinfo=_startupinfo(),
+            creationflags=_creationflags(),
+        )
+        return True
+    except subprocess.CalledProcessError as e:
+        err = e.stderr or ""
+        tail = err[-2000:] if len(err) > 2000 else err
+        print(f"[FFmpeg] ERROR (rc={e.returncode}): {tail}")
+        return False
+    except FileNotFoundError:
+        print("[FFmpeg] NOT FOUND - install FFmpeg or set FFMPEG_PATH env")
+        return False
+
+
+def _run_ffmpeg_with_progress(full_cmd: list, timeout: int, duration: float, progress_cb) -> bool:
+    tail = []
+    started = time.monotonic()
+    try:
+        process = subprocess.Popen(
+            full_cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            startupinfo=_startupinfo(),
+            creationflags=_creationflags(),
+        )
+    except FileNotFoundError:
+        print("[FFmpeg] NOT FOUND - install FFmpeg or set FFMPEG_PATH env")
+        return False
+
+    try:
+        for raw_line in process.stdout:
+            line = raw_line.strip()
+            if line:
+                tail.append(line)
+                tail = tail[-40:]
+            if line.startswith("out_time_ms="):
+                try:
+                    out_seconds = int(line.split("=", 1)[1]) / 1_000_000
+                    progress_cb(max(0, min(100, int((out_seconds / duration) * 100))))
+                except Exception:
+                    pass
+            elif line.startswith("progress=end"):
+                try:
+                    progress_cb(100)
+                except Exception:
+                    pass
+            if timeout and time.monotonic() - started > timeout:
+                process.kill()
+                print(f"[FFmpeg] ERROR: timeout after {timeout}s")
+                return False
+        rc = process.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        print(f"[FFmpeg] ERROR: timeout after {timeout}s")
+        return False
+
+    if rc != 0:
+        print(f"[FFmpeg] ERROR (rc={rc}): {' | '.join(tail[-20:])}")
+        return False
+    return True
+
 
 def get_video_info(path: str) -> dict:
     cmd = [FFPROBE_PATH, "-v", "quiet", "-print_format", "json", "-show_format", "-show_streams", path]
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30, creationflags=subprocess.CREATE_NO_WINDOW)
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30, creationflags=_creationflags())
         data = json.loads(result.stdout)
         video_stream = next((s for s in data.get("streams", []) if s["codec_type"] == "video"), {})
         audio_stream = next((s for s in data.get("streams", []) if s["codec_type"] == "audio"), {})
@@ -61,7 +238,7 @@ def get_video_info(path: str) -> dict:
         return {
             "width": int(video_stream.get("width", 0)),
             "height": int(video_stream.get("height", 0)),
-            "fps": eval(video_stream.get("r_frame_rate", "0/1")) if "/" in video_stream.get("r_frame_rate", "0/1") else 0,
+            "fps": _parse_fps(video_stream.get("r_frame_rate", "0/1")),
             "duration": float(fmt.get("duration", 0)),
             "size": int(fmt.get("size", 0)),
             "video_codec": video_stream.get("codec_name", ""),
@@ -83,39 +260,13 @@ def render_video(input_path: str, output_path: str, params: dict = None):
     if vf:
         cmd.extend(["-vf", ",".join(vf)])
 
-    codec = p.get("codec", "h264")
-    if has_nvenc():
-        codec_map = {"h264": "h264_nvenc", "h265": "hevc_nvenc", "av1": "libaom-av1"}
-    else:
-        codec_map = {"h264": "libx264", "h265": "libx265", "av1": "libaom-av1"}
-    chosen_codec = codec_map.get(codec, "libx264")
-    cmd.extend(["-c:v", chosen_codec])
-
-    if p.get("bitrate"):
-        cmd.extend(["-b:v", p["bitrate"]])
-    else:
-        if "nvenc" in chosen_codec:
-            preset_map = {
-                "ultrafast": "p1",
-                "superfast": "p1",
-                "veryfast": "p2",
-                "faster": "p2",
-                "fast": "p3",
-                "medium": "p4",
-                "slow": "p5",
-                "slower": "p6",
-                "veryslow": "p7"
-            }
-            nvenc_preset = preset_map.get(p.get("preset", "medium"), "p4")
-            cmd.extend(["-rc", "vbr", "-cq", p.get("crf", "18"), "-preset", nvenc_preset])
-        else:
-            cmd.extend(["-crf", p.get("crf", "18"), "-preset", p.get("preset", "medium")])
+    _append_video_encoding_args(cmd, p)
 
     cmd.extend(["-c:a", "aac", "-b:a", p.get("audio_bitrate", "192k"), "-y", output_path])
     return run_ffmpeg(cmd)
 
 
-def single_pass_render(video_path: str, output_path: str, params: dict = None) -> bool:
+def single_pass_render(video_path: str, output_path: str, params: dict = None, progress_cb=None) -> bool:
     """
     Renders video in a single pass: blurs hardsub region, burns soft subtitle,
     replaces/muxes audio, scales, sets fps, and encodes.
@@ -234,37 +385,28 @@ def single_pass_render(video_path: str, output_path: str, params: dict = None) -
         cmd.extend(["-map", "0:a?"])
 
     # 5. FPS
-    if p.get("fps"):
-        cmd.extend(["-r", str(p["fps"])])
+    requested_fps = p.get("fps")
+    original_fps = float(info.get("fps", 0) or 0)
+    fps_changes = False
+    if requested_fps:
+        try:
+            fps_changes = original_fps > 0 and abs(float(requested_fps) - original_fps) > 0.01
+        except (TypeError, ValueError):
+            fps_changes = True
+        if fps_changes:
+            cmd.extend(["-r", str(requested_fps)])
+
+    duration = float(info.get("duration", 0) or 0)
+    copy_allowed = p.get("copy_if_possible", True) is not False
+    if copy_allowed and not filter_nodes and not has_tts and not fps_changes and not p.get("force_encode"):
+        cmd.extend(["-c", "copy"])
+        if Path(output_path).suffix.lower() in {".mp4", ".mov", ".m4v"}:
+            cmd.extend(["-movflags", "+faststart"])
+        cmd.extend(["-y", output_path])
+        return run_ffmpeg(cmd, progress_cb=progress_cb, duration=duration)
 
     # 6. Video Codec and encoding settings
-    codec = p.get("codec", "h264")
-    if has_nvenc():
-        codec_map = {"h264": "h264_nvenc", "h265": "hevc_nvenc", "av1": "libaom-av1"}
-    else:
-        codec_map = {"h264": "libx264", "h265": "libx265", "av1": "libaom-av1"}
-    chosen_codec = codec_map.get(codec, "libx264")
-    cmd.extend(["-c:v", chosen_codec])
-
-    if p.get("bitrate"):
-        cmd.extend(["-b:v", p["bitrate"]])
-    else:
-        if "nvenc" in chosen_codec:
-            preset_map = {
-                "ultrafast": "p1",
-                "superfast": "p1",
-                "veryfast": "p2",
-                "faster": "p2",
-                "fast": "p3",
-                "medium": "p4",
-                "slow": "p5",
-                "slower": "p6",
-                "veryslow": "p7"
-            }
-            nvenc_preset = preset_map.get(p.get("preset", "medium"), "p4")
-            cmd.extend(["-rc", "vbr", "-cq", p.get("crf", "18"), "-preset", nvenc_preset])
-        else:
-            cmd.extend(["-crf", p.get("crf", "18"), "-preset", p.get("preset", "medium")])
+    _append_video_encoding_args(cmd, p)
 
     # 7. Audio Codec
     cmd.extend(["-c:a", "aac", "-b:a", p.get("audio_bitrate", "192k")])
@@ -272,7 +414,7 @@ def single_pass_render(video_path: str, output_path: str, params: dict = None) -
     # 8. Output
     cmd.extend(["-y", output_path])
 
-    return run_ffmpeg(cmd)
+    return run_ffmpeg(cmd, progress_cb=progress_cb, duration=duration)
 
 
 def export_audio(input_path: str, output_path: str, fmt: str = "mp3"):

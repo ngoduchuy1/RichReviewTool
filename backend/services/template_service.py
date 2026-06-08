@@ -1,6 +1,4 @@
 import json
-import shutil
-from pathlib import Path
 from ..database import db_cursor
 from ..config import TEMPLATES_DIR, PROJECTS_DIR
 

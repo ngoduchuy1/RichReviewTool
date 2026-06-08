@@ -1,8 +1,6 @@
 import sqlite3
-import json
 import threading
 from contextlib import contextmanager
-from datetime import datetime
 from .config import DB_PATH
 
 _local = threading.local()

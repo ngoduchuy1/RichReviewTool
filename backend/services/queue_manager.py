@@ -2,12 +2,36 @@ from ..database import db_cursor
 from datetime import datetime
 
 
+def ensure_project_id(project_id: int = None) -> int:
+    """Return an existing project id, creating a local project only for None."""
+    if project_id is None:
+        from .project_service import create_project
+        project = create_project(f"project_{datetime.now().strftime('%Y%m%d_%H%M%S')}", preset="Movie Review")
+        return int(project["id"])
+
+    try:
+        pid = int(project_id)
+    except (TypeError, ValueError):
+        raise ValueError(f"Invalid project_id: {project_id}")
+
+    if pid == 0:
+        return 0
+
+    with db_cursor() as cur:
+        row = cur.execute("SELECT id FROM projects WHERE id=?", (pid,)).fetchone()
+        if row:
+            return pid
+    raise ValueError(f"Project {pid} not found")
+
+
 def add_queue_item(project_id: int, item_type: str, input_path: str, params: dict = None, priority: int = 0) -> int:
     import json
+    project_id = ensure_project_id(project_id)
+    db_project_id = None if project_id == 0 else project_id
     with db_cursor() as cur:
         cur.execute(
             "INSERT INTO queue_items (project_id, type, status, input_path, params, priority) VALUES (?,?,?,?,?,?)",
-            (project_id, item_type, "waiting", input_path, json.dumps(params or {}), priority),
+            (db_project_id, item_type, "waiting", input_path, json.dumps(params or {}), priority),
         )
         item_id = cur.lastrowid
     from .event_bus import event_bus

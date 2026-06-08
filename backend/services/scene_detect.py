@@ -1,7 +1,3 @@
-import os
-import json
-from pathlib import Path
-from ..config import CACHE_DIR
 from ..database import db_cursor
 
 
@@ -31,7 +27,6 @@ def detect_scenes(video_path: str, threshold: float = 27.0, project_id: int = 0)
 def _ffmpeg_scene_detect(video_path, threshold, project_id):
     """Fallback: use FFmpeg scene detection."""
     import subprocess
-    import json
 
     cmd = [
         "ffmpeg", "-i", video_path,

@@ -3,9 +3,8 @@ Pipeline API — /api/pipeline/*
 Start full processing pipelines from the frontend.
 """
 from fastapi import APIRouter, HTTPException
-from ..services.queue_manager import add_queue_item
+from ..services.queue_manager import add_queue_item, ensure_project_id
 from ..services.pipeline_service import run_pipeline
-from ..workers.ffmpeg_worker import get_worker
 
 router = APIRouter()
 
@@ -37,21 +36,14 @@ def start_pipeline(data: dict):
     if not project_id:
         raise HTTPException(400, "Yêu cầu cung cấp project_id")
 
-    # Ensure project exists (auto-create if missing)
-    from ..database import db_cursor
-    with db_cursor() as cur:
-        exists = cur.execute("SELECT 1 FROM projects WHERE id=?", (project_id,)).fetchone()
-    if not exists:
-        from ..services.project_service import create_project
-        create_project(f"project_{project_id}", preset="Movie Review")
-        print(f"[Pipeline] Auto-created project {project_id}")
+    project_id = ensure_project_id(project_id)
 
     try:
         item_id = add_queue_item(project_id, ptype, input_path, params, priority=1)
     except Exception as e:
         raise HTTPException(500, f"Không thể đưa pipeline vào hàng đợi: {e}")
 
-    return {"id": item_id, "message": f"Đã đưa Pipeline '{ptype}' vào hàng đợi"}
+    return {"id": item_id, "project_id": project_id, "message": f"Đã đưa Pipeline '{ptype}' vào hàng đợi"}
 
 
 @router.post("/{item_id}/process")

@@ -1,6 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional, Any, List
-from datetime import datetime
+from typing import Optional, List
 
 
 class ProjectCreate(BaseModel):
@@ -71,6 +70,7 @@ class SceneDetectRequest(BaseModel):
 
 
 class EnhanceRequest(BaseModel):
+    project_id: int = 0
     video_path: str
     lut: Optional[str] = None
     brightness: Optional[float] = None
@@ -91,11 +91,13 @@ class EnhanceRequest(BaseModel):
 
 
 class EditRequest(BaseModel):
+    project_id: int = 0
     video_path: str
     operations: List[dict] = []
 
 
 class TTSRequest(BaseModel):
+    project_id: int = 0
     text: str
     provider: str = "edge"
     voice: str = "vi-VN-NamMinhNeural"
@@ -112,6 +114,7 @@ class TranslateRequest(BaseModel):
 
 
 class AISummaryRequest(BaseModel):
+    project_id: int = 0
     text: str
     max_length: int = 200
     engine: str = "gpt"
@@ -148,5 +151,6 @@ class AITitleRequest(BaseModel):
 
 
 class AIHashtagRequest(BaseModel):
+    project_id: int = 0
     text: str
     count: int = 5

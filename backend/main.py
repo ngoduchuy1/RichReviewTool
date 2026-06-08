@@ -8,8 +8,19 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from contextlib import asynccontextmanager
 
-from .config import HOST, PORT, BASE_DIR, MAX_QUEUE_WORKERS
+from .config import (
+    HOST,
+    PORT,
+    BASE_DIR,
+    MAX_QUEUE_WORKERS,
+    DATA_DIR,
+    DOWNLOADS_DIR,
+    SUBTITLES_DIR,
+    VOICES_DIR,
+    EXPORTS_DIR,
+)
 from .database import init_db
+from .services.path_allowlist import allow_path, is_allowed_path
 from .services.preset_service import init_presets
 from .workers.ffmpeg_worker import get_worker
 from .routers import (
@@ -31,7 +42,6 @@ from .routers import (
     template_router,
     batch_router,
 )
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -56,7 +66,12 @@ app = FastAPI(title="0xForge API", version="2.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "null",
+        f"http://127.0.0.1:{PORT}",
+        f"http://localhost:{PORT}",
+    ],
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -108,6 +123,11 @@ async def browse_system(type: str = "file", ext: str = ""):
         return path
 
     path = await asyncio.to_thread(_open_dialog)
+    if path and ext in {"video", "srt"}:
+        try:
+            allow_path(path)
+        except Exception:
+            pass
     return {"path": path}
 
 
@@ -242,17 +262,52 @@ def save_settings(data: dict):
 
 @app.get("/api/video/serve")
 def serve_video(path: str = ""):
-    from fastapi.responses import FileResponse
-    import os
-    if not path or not os.path.exists(path):
+    resolved = _resolve_allowed_media_path(path)
+    if not resolved:
         from fastapi.responses import PlainTextResponse
         return PlainTextResponse("Video not found", status_code=404)
     import mimetypes
     mimetypes.init()
-    return FileResponse(path, media_type=mimetypes.guess_type(path)[0] or "video/mp4")
+    return FileResponse(str(resolved), media_type=mimetypes.guess_type(str(resolved))[0] or "video/mp4")
 
 
-app.mount("/static", StaticFiles(directory=str(BASE_DIR)), name="static")
+def _resolve_allowed_media_path(path: str):
+    if not path:
+        return None
+    try:
+        candidate = Path(path).expanduser().resolve()
+    except Exception:
+        return None
+    if not candidate.exists() or not candidate.is_file():
+        return None
+
+    allowed_roots = [DATA_DIR, DOWNLOADS_DIR, SUBTITLES_DIR, VOICES_DIR, EXPORTS_DIR]
+    for root in allowed_roots:
+        try:
+            candidate.relative_to(Path(root).resolve())
+            return candidate
+        except ValueError:
+            pass
+
+    if is_allowed_path(str(candidate)):
+        return candidate
+
+    from .database import db_cursor
+    with db_cursor() as cur:
+        checks = [
+            ("SELECT 1 FROM assets WHERE path=? LIMIT 1", (str(candidate),)),
+            ("SELECT 1 FROM downloads WHERE output_path=? LIMIT 1", (str(candidate),)),
+            ("SELECT 1 FROM exports WHERE output_path=? LIMIT 1", (str(candidate),)),
+            ("SELECT 1 FROM queue_items WHERE input_path=? OR output_path=? LIMIT 1", (str(candidate), str(candidate))),
+            ("SELECT 1 FROM clips WHERE source_path=? LIMIT 1", (str(candidate),)),
+        ]
+        for query, args in checks:
+            if cur.execute(query, args).fetchone():
+                return candidate
+    return None
+
+
+app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static"), check_dir=False), name="static")
 
 
 @app.get("/")

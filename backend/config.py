@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 
 import sys
+from dotenv import load_dotenv
 
 # If frozen (PyInstaller), use executable folder for user data
 if getattr(sys, 'frozen', False):
@@ -10,6 +11,7 @@ else:
     EXE_DIR = Path(__file__).resolve().parent.parent
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env")
 DATA_DIR = EXE_DIR / "data"
 DB_DIR = DATA_DIR / "db"
 PROJECTS_DIR = DATA_DIR / "projects"
@@ -30,17 +32,18 @@ YTDLP_PATH = os.environ.get("YTDLP_PATH", "yt-dlp")
 LIBOPENSHOT_PATH = os.environ.get("LIBOPENSHOT_PATH", "")
 
 WHISPER_MODEL = os.environ.get("WHISPER_MODEL", "base")
-WHISPER_DEVICE = os.environ.get("WHISPER_DEVICE", "cpu")
+WHISPER_DEVICE = os.environ.get("WHISPER_DEVICE", "auto")
+WHISPER_COMPUTE_TYPE = os.environ.get("WHISPER_COMPUTE_TYPE", "auto")
 
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 AZURE_TTS_KEY = os.environ.get("AZURE_TTS_KEY", "")
 AZURE_TTS_REGION = os.environ.get("AZURE_TTS_REGION", "eastus")
 ELEVENLABS_API_KEY = os.environ.get("ELEVENLABS_API_KEY", "")
-FPT_API_KEY = os.environ.get("FPT_API_KEY", "4pgQbwd6INSU8YWqNefwOawOI2gALxz7")
+FPT_API_KEY = os.environ.get("FPT_API_KEY", "")
 
-VOCAL_SEPARATION_ENABLED = os.environ.get("VOCAL_SEPARATION_ENABLED", "true").lower() == "true"
-MAX_QUEUE_WORKERS = int(os.environ.get("MAX_QUEUE_WORKERS", "2"))
+VOCAL_SEPARATION_ENABLED = os.environ.get("VOCAL_SEPARATION_ENABLED", "false").lower() == "true"
+MAX_QUEUE_WORKERS = int(os.environ.get("MAX_QUEUE_WORKERS", "1"))
 QUEUE_JOB_TIMEOUT_MINUTES = int(os.environ.get("QUEUE_JOB_TIMEOUT_MINUTES", "60"))
 PORT = int(os.environ.get("PORT", "7860"))
 HOST = os.environ.get("HOST", "127.0.0.1")

@@ -4,11 +4,10 @@ Create, Open, Save, Version History, Auto Backup, Export/Import.
 """
 import json
 import shutil
-import time
 from pathlib import Path
 from datetime import datetime
 from ..database import db_cursor
-from ..config import PROJECTS_DIR, TEMPLATES_DIR
+from ..config import PROJECTS_DIR
 from .preset_service import get_preset
 
 

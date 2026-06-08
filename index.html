@@ -20,8 +20,14 @@
         </div>
       </div>
       <div class="topbar-center">
+        <div class="workspace-switcher" aria-label="Workspace">
+          <button class="workspace-tab active" data-workspace-action="home"><i class="ri-layout-4-line"></i><span>Editor</span></button>
+          <button class="workspace-tab" data-workspace-action="preview"><i class="ri-play-circle-line"></i><span>Preview</span></button>
+          <button class="workspace-tab" data-workspace-action="queue"><i class="ri-list-check-3"></i><span>Queue</span></button>
+        </div>
       </div>
       <div class="topbar-right">
+        <button class="topbar-command" id="btn-command-palette" title="Command palette"><i class="ri-command-line"></i><span>Ctrl K</span></button>
         <span class="version-badge">V2</span>
         <label class="toggle-switch">
           <input type="checkbox" id="toggle-mode" />
@@ -57,6 +63,15 @@
       <aside id="asset-library" class="panel">
         <div class="asset-heading">DỰ ÁN</div>
         <div class="asset-title"><i class="ri-archive-stack-line"></i><span>Tài nguyên</span></div>
+        <div class="asset-search">
+          <i class="ri-search-line"></i>
+          <input type="text" id="asset-filter" placeholder="Lọc asset" />
+        </div>
+        <div class="workflow-strip">
+          <div class="workflow-step done"><span>1</span><strong>Load</strong></div>
+          <div class="workflow-step active"><span>2</span><strong>Edit</strong></div>
+          <div class="workflow-step"><span>3</span><strong>Render</strong></div>
+        </div>
         <button class="asset-item active"><i class="ri-film-line"></i><span>Video</span><span class="asset-count">12</span></button>
         <button class="asset-item"><i class="ri-music-2-line"></i><span>Nhạc nền</span><span class="asset-count">8</span></button>
         <button class="asset-item"><i class="ri-mic-line"></i><span>Giọng đọc</span><span class="asset-count">5</span></button>
@@ -67,6 +82,24 @@
 
       <!-- CONTENT AREA -->
       <div id="content-area">
+        <section id="workspace-commandbar">
+          <div class="workspace-context">
+            <span class="context-label">Project</span>
+            <strong id="workspace-project-name">Movie Review</strong>
+            <span id="workspace-video-state">Chưa chọn video</span>
+          </div>
+          <div class="workspace-actions">
+            <button class="tool-action" data-workspace-action="load"><i class="ri-folder-video-line"></i><span>Load media</span></button>
+            <button class="tool-action" data-workspace-action="subtitle"><i class="ri-closed-captioning-line"></i><span>Subtitle</span></button>
+            <button class="tool-action" data-workspace-action="voice"><i class="ri-mic-line"></i><span>Voice</span></button>
+            <button class="tool-action primary" data-workspace-action="execute"><i class="ri-play-fill"></i><span>Render</span></button>
+          </div>
+          <div class="workspace-metrics">
+            <div><span id="ws-queue-count">0</span><small>queue</small></div>
+            <div><span id="ws-running-count">0</span><small>running</small></div>
+            <div><span id="ws-failed-count">0</span><small>failed</small></div>
+          </div>
+        </section>
 
         <!-- TOP TWO PANELS ROW -->
         <div id="top-panels-row">
@@ -74,7 +107,7 @@
           <!-- WORK MODE PANEL (Chế Độ Làm Việc - Bước 2) -->
           <section id="work-mode-panel" class="panel">
             <div class="panel-header">
-              <span class="step-badge">CHẾ ĐỘ LÀM VIỆC (BƯỚC 2)</span>
+              <span class="step-badge">Thiết lập</span>
               <button class="info-btn">?</button>
             </div>
             <div class="panel-row preset-row">
@@ -134,7 +167,7 @@
           <!-- LOAD DATA PANEL (Bước 1) -->
           <section id="load-data-panel" class="panel">
             <div class="panel-header">
-              <span class="step-badge">LOAD DỮ LIỆU (BƯỚC 1)</span>
+              <span class="step-badge">Nguồn vào</span>
             </div>
             <div class="panel-row">
               <label class="field-label" style="white-space:nowrap; width:100px">Path Video:</label>
@@ -184,7 +217,7 @@
           <!-- PROCESSING PANEL (Bước 3 - Tùy Chọn Thông Số) -->
           <section id="processing-panel" class="panel flex-col">
             <div class="panel-header">
-              <span class="step-badge">TÙY CHỌN THÔNG SỐ (BƯỚC 3)</span>
+              <span class="step-badge">Xử lý</span>
             </div>
 
             <!-- Tab Bar -->
@@ -218,7 +251,7 @@
               </div>
               <div class="tab-row mt6" id="row-fpt-key" style="display: none;">
                 <label class="field-label" style="color: var(--accent); font-weight: bold;">FPT API Key:</label>
-                <input type="text" class="text-input" id="inp-fpt-key" value="4pgQbwd6INSU8YWqNefwOawOI2gALxz7" placeholder="Nhập FPT.AI API Key..." style="flex:1" />
+                <input type="text" class="text-input" id="inp-fpt-key" placeholder="Nhập FPT.AI API Key..." style="flex:1" />
               </div>
               <div class="tab-row mt6">
                 <label class="field-label">Ngôn Ngữ Đọc:</label>
@@ -357,6 +390,11 @@
                       <input type="checkbox" checked id="chk-sub-whisperx" />
                       <span class="chk-box"></span>
                       <span class="field-label">WhisperX word alignment</span>
+                    </label>
+                    <label class="feature-item custom-checkbox" style="margin-top:8px">
+                      <input type="checkbox" id="chk-vocal-sep" />
+                      <span class="chk-box"></span>
+                      <span class="field-label">Tach vocal bang Demucs khi audio co nhac nen nang</span>
                     </label>
                     <div class="feat-row" style="margin-top: 10px;">
                       <button class="action-btn" id="btn-sub-transcribe" style="background: var(--accent); color: white; border: none; padding: 6px 15px;">
@@ -568,7 +606,7 @@
                 <div class="feat-row"><label class="field-label">Mã hóa (Codec)</label><select class="select-input" id="sel-export-codec"><option>H264</option><option>H265</option><option>AV1</option></select></div>
                 <div class="feat-row"><label class="field-label">Bitrate</label><select class="select-input" id="sel-export-bitrate"><option>4M</option><option selected>8M</option><option>16M</option><option>Tự động</option></select></div>
                 <div class="feat-row"><label class="field-label">FPS</label><select class="select-input" id="sel-export-fps"><option>24</option><option selected>30</option><option>60</option></select></div>
-                <div class="feat-row"><label class="field-label">GPU</label><select class="select-input" id="sel-export-gpu"><option>CPU</option><option>NVENC</option><option>AMD</option></select></div>
+                <div class="feat-row"><label class="field-label">GPU</label><select class="select-input" id="sel-export-gpu"><option>Auto</option><option>CPU</option><option>NVENC</option><option>AMD</option></select></div>
               </div>
               <button class="action-btn" id="btn-export-render" style="margin-top:4px"><i class="ri-movie-2-line"></i> Xuất Video</button>
               <button class="action-btn" id="btn-export-audio"><i class="ri-volume-up-line"></i> Xuất Âm Thanh</button>
@@ -577,7 +615,7 @@
               <button class="action-btn" id="btn-export-queue"><i class="ri-list-check-3"></i> Thêm vào Hàng chờ</button>
               <div class="section-label">Mẫu thiết lập</div>
               <div class="feature-list">
-                <select class="select-input" id="sel-export-preset" style="width:100%"><option>TikTok Recap</option><option selected>Movie Review</option><option>Shorts Auto</option><option>Reup 9:16</option><option>Custom</option></select>
+                <select class="select-input" id="sel-export-preset" style="width:100%"><option>Draft Fast</option><option>NVENC Fast</option><option>Quality</option><option>TikTok Recap</option><option selected>Movie Review</option><option>Shorts Auto</option><option>Reup 9:16</option><option>Custom</option></select>
                 <button class="action-btn" id="btn-export-save-preset"><i class="ri-save-3-line"></i> Lưu Preset</button>
                 <button class="action-btn" id="btn-export-load-preset"><i class="ri-folder-open-line"></i> Tải Preset</button>
               </div>
@@ -613,16 +651,26 @@
             </div>
             <div class="panel-row mt8 align-center">
               <button class="info-btn" id="btn-help-execute">?</button>
-              <button class="execute-btn" id="btn-execute"><i class="ri-play-fill"></i> THỰC HIỆN (5)</button>
+              <button class="execute-btn" id="btn-execute"><i class="ri-play-fill"></i> Render</button>
             </div>
           </section>
 
           <!-- VIDEO PREVIEW (Bước 4) -->
           <section id="video-preview" class="panel">
             <div class="panel-header">
-              <span class="step-badge">VIDEO GỐC (BƯỚC 4)</span>
+              <span class="step-badge">Preview</span>
+              <div class="preview-header-meta">
+                <span id="preview-file-name">No media loaded</span>
+                <span id="preview-render-profile">MP4 H264</span>
+              </div>
             </div>
               <div class="preview-container" id="preview-container">
+              <div class="preview-inspector">
+                <div class="preview-stat"><span>Ratio</span><strong id="preview-ratio">16:9</strong></div>
+                <div class="preview-stat"><span>FPS</span><strong id="preview-fps">30</strong></div>
+                <div class="preview-stat"><span>Sub</span><strong id="preview-sub-state">Auto</strong></div>
+                <div class="preview-stat"><span>Voice</span><strong id="preview-voice-state">Edge</strong></div>
+              </div>
               <div class="preview-area">
               <div class="preview-canvas" id="preview-canvas">
                 <video id="video-player" style="width:100%;height:100%;object-fit:contain;background:#000" controls></video>
@@ -678,6 +726,14 @@
               </div>
               </div>
               <div class="multi-track-timeline" id="scene-timeline">
+                <div class="timeline-toolbar">
+                  <span><i class="ri-timeline-view"></i> Timeline</span>
+                  <div>
+                    <button class="timeline-tool" data-workspace-action="timeline-zoom-out" title="Thu nhỏ timeline"><i class="ri-subtract-line"></i></button>
+                    <button class="timeline-tool" data-workspace-action="timeline-zoom-in" title="Phóng to timeline"><i class="ri-add-line"></i></button>
+                    <button class="timeline-tool" data-workspace-action="timeline-snap" title="Bật snap"><i class="ri-magnet-line"></i></button>
+                  </div>
+                </div>
                 <div class="timeline-ruler">
                   <span>00:00</span><span>00:23</span><span>00:45</span><span>01:12</span>
                 </div>
@@ -712,6 +768,17 @@
 
         <!-- TASK QUEUE + RESULT TABLE -->
         <section id="task-queue-section" class="panel">
+          <div class="queue-toolbar">
+            <div>
+              <span class="section-label inline-label">Hàng chờ render</span>
+              <small id="queue-health-text">Chưa có task đang chạy</small>
+            </div>
+            <div class="queue-stats">
+              <span><strong id="queue-running-total">0</strong> chạy</span>
+              <span><strong id="queue-completed-total">0</strong> xong</span>
+              <span><strong id="queue-failed-total">0</strong> lỗi</span>
+            </div>
+          </div>
           <div id="batch-manager">
             <div class="batch-left">
               <span class="section-label inline-label">Hàng chờ</span>

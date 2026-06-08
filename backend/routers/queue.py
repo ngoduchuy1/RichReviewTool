@@ -3,7 +3,7 @@ import json
 import queue as qmod
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
-from ..services.queue_manager import get_queue, add_queue_item, update_item_status, retry_failed, pause_all, resume_all, clear_all
+from ..services.queue_manager import add_queue_item, retry_failed, pause_all, resume_all, clear_all
 from ..services.event_bus import event_bus
 from ..database import db_cursor
 

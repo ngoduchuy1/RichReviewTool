@@ -11,8 +11,6 @@ from ..services.project_service import (
     save_settings,
     load_settings,
 )
-from ..database import db_cursor
-from typing import Optional
 
 router = APIRouter()
 

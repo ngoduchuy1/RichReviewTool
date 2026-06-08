@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 from ..services.ffmpeg_utils import run_ffmpeg
 
@@ -9,7 +8,7 @@ def process_music(input_path: str, volume: float = 1.0, fade_in: float = 0, fade
         audio = AudioSegment.from_file(input_path)
 
         if volume != 1.0:
-            audio = audio + (20 * (volume - 1.0) if volume < 1.0 else audio.apply_gain(20 * (volume - 1.0)))
+            audio = audio.apply_gain(20 * (volume - 1.0))
 
         if fade_in > 0:
             audio = audio.fade_in(int(fade_in * 1000))

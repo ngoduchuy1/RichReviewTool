@@ -1,6 +1,4 @@
 import subprocess
-import json
-import os
 import re
 from pathlib import Path
 from ..config import YTDLP_PATH, DOWNLOADS_DIR

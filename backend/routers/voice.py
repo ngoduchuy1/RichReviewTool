@@ -1,17 +1,23 @@
-from fastapi import APIRouter, HTTPException, BackgroundTasks, UploadFile, File
-from ..models.schemas import TTSRequest
-from ..services.tts_engine import synthesize
+from fastapi import APIRouter, UploadFile, File
+
 from ..config import VOICES_DIR
-import os
+from ..models.schemas import TTSRequest
+from ..services.queue_manager import add_queue_item
 
 router = APIRouter()
 
 
 @router.post("/tts")
-def text_to_speech(data: TTSRequest, bg: BackgroundTasks):
+def text_to_speech(data: TTSRequest):
     out = data.output_path or str(VOICES_DIR / f"tts_{hash(data.text)}.wav")
-    bg.add_task(synthesize, data.text, data.provider, data.voice, data.speed, out)
-    return {"message": "Đã đưa tiến trình TTS vào hàng đợi", "output": out}
+    item_id = add_queue_item(data.project_id, "tts_text", "", {
+        "text": data.text,
+        "provider": data.provider,
+        "voice": data.voice,
+        "speed": data.speed,
+        "output_path": out,
+    })
+    return {"id": item_id, "message": "Da dua tien trinh TTS vao hang doi", "output": out}
 
 
 @router.get("/voices")
@@ -26,14 +32,15 @@ async def upload_sample(file: UploadFile = File(...)):
     content = await file.read()
     out = VOICES_DIR / f"sample_{file.filename}"
     out.write_bytes(content)
-    return {"path": str(out), "message": "Đã tải lên tệp mẫu"}
+    return {"path": str(out), "message": "Da tai len tep mau"}
 
 
 @router.post("/clone/train")
-def train_voice(sample_path: str, name: str, bg: BackgroundTasks):
-    from ..services.voice_clone import train_clone
-    bg.add_task(train_clone, sample_path, name)
-    return {"message": f"Đã bắt đầu huấn luyện cho {name}"}
+def train_voice(data: dict):
+    sample_path = data.get("sample_path", "")
+    name = data.get("name", "default")
+    item_id = add_queue_item(data.get("project_id", 0), "train_voice", "", {"sample_path": sample_path, "name": name})
+    return {"id": item_id, "message": f"Da bat dau huan luyen cho {name}"}
 
 
 @router.get("/clone/list")
@@ -54,14 +61,16 @@ def list_clones():
 
 
 @router.post("/clone/generate")
-def generate_clone_tts(text: str, clone_name: str):
+def generate_clone_tts(text: str, clone_name: str, project_id: int = 0):
     out = str(VOICES_DIR / f"clone_{hash(text)}_{clone_name}.wav")
-    from ..services.tts_engine import synthesize
-    synthesize(text, "clone", clone_name, 1.0, out)
-    if os.path.exists(out):
-        from fastapi.responses import FileResponse
-        return FileResponse(out, media_type="audio/wav", filename="clone_output.wav")
-    return {"message": "Không thể tạo giọng nói clone", "output": None}
+    item_id = add_queue_item(project_id, "tts_text", "", {
+        "text": text,
+        "provider": "clone",
+        "voice": clone_name,
+        "speed": 1.0,
+        "output_path": out,
+    })
+    return {"id": item_id, "message": "Da dua tien trinh tao giong clone vao hang doi", "output": out}
 
 
 @router.get("/clone/export")
@@ -78,43 +87,49 @@ def export_clone_voices():
 
 
 @router.get("/play")
-def play_voice(text: str = "Xin chào, đây là giọng đọc thử nghiệm", provider: str = "edge", voice: str = "vi-VN-NamMinhNeural", fpt_api_key: str = None):
-    import tempfile, os
-    from ..services.tts_engine import synthesize
-    out = str(VOICES_DIR / f"play_test.wav")
-    synthesize(text, provider, voice, 1.0, out, api_key=fpt_api_key)
-    if os.path.exists(out):
-        from fastapi.responses import FileResponse
-        return FileResponse(out, media_type="audio/wav", filename="test.wav")
-    return {"message": "Đã đưa tiến trình tổng hợp giọng nói vào hàng đợi"}
+def play_voice(text: str = "Xin chao, day la giong doc thu nghiem", provider: str = "edge", voice: str = "vi-VN-NamMinhNeural", fpt_api_key: str = None, project_id: int = 0):
+    out = str(VOICES_DIR / "play_test.wav")
+    item_id = add_queue_item(project_id, "tts_text", "", {
+        "text": text,
+        "provider": provider,
+        "voice": voice,
+        "speed": 1.0,
+        "api_key": fpt_api_key,
+        "output_path": out,
+    })
+    return {"id": item_id, "message": "Da dua tien trinh nghe thu vao hang doi", "output": out}
 
 
 @router.get("/edge-voices")
 def get_edge_voices():
     try:
-        import edge_tts
         import asyncio
+        import edge_tts
+
         async def fetch():
             return await edge_tts.VoicesManager.create()
+
         manager = asyncio.run(fetch())
         return [
             {
                 "short_name": v["ShortName"],
-                "gender": "Nam" if v["Gender"] == "Male" else "Nữ",
+                "gender": "Nam" if v["Gender"] == "Male" else "Nu",
                 "locale": v["Locale"],
-                "friendly_name": v["FriendlyName"]
-            } for v in manager.voices
+                "friendly_name": v["FriendlyName"],
+            }
+            for v in manager.voices
         ]
-    except Exception as e:
+    except Exception:
         return [
-            {"short_name": "vi-VN-HoaiMyNeural", "gender": "Nữ", "locale": "vi-VN", "friendly_name": "Microsoft HoaiMy Online"},
-            {"short_name": "vi-VN-NamMinhNeural", "gender": "Nam", "locale": "vi-VN", "friendly_name": "Microsoft NamMinh Online"}
+            {"short_name": "vi-VN-HoaiMyNeural", "gender": "Nu", "locale": "vi-VN", "friendly_name": "Microsoft HoaiMy Online"},
+            {"short_name": "vi-VN-NamMinhNeural", "gender": "Nam", "locale": "vi-VN", "friendly_name": "Microsoft NamMinh Online"},
         ]
 
 
 @router.get("/providers")
 def list_providers():
     clones_dir = VOICES_DIR / "clones"
+    clones_dir.mkdir(exist_ok=True)
     clone_voices = [d.name for d in clones_dir.iterdir() if d.is_dir() and (d / "voice_prompt.npz").exists()]
     return {
         "providers": [
@@ -122,6 +137,6 @@ def list_providers():
             {"id": "google", "name": "Google TTS (free)", "voices": ["vi", "en"]},
             {"id": "azure", "name": "Azure TTS", "voices": ["vi-VN-NamMinhNeural", "vi-VN-HoaiMyNeural"]},
             {"id": "elevenlabs", "name": "ElevenLabs", "voices": ["Rachel", "Domi", "Bella"]},
-            {"id": "clone", "name": "Voice Clone (Bark)", "voices": clone_voices or ["Chưa có giọng clone nào"]},
+            {"id": "clone", "name": "Voice Clone (Bark)", "voices": clone_voices or ["Chua co giong clone nao"]},
         ]
     }

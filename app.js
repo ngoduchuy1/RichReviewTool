@@ -1,9 +1,9 @@
 /* ─── app.js – 0xForge V2.0.0 ─── */
 
-/* â”€â”€â”€ API Layer â”€â”€â”€ */
+/* ─── API Layer ─── */
 const API_BASE = window.location.origin + '/api';
 
-/* â”€â”€â”€ Toast notification system â”€â”€â”€ */
+/* ─── Toast notification system ─── */
 function showToast(message, type = 'error', duration = 4000) {
   try {
     const existing = document.getElementById('toast-container');
@@ -11,12 +11,21 @@ function showToast(message, type = 'error', duration = 4000) {
     if (!container) {
       container = document.createElement('div');
       container.id = 'toast-container';
-      container.style.cssText = 'position:fixed;top:56px;right:16px;z-index:99999;pointer-events:none;display:flex;flex-direction:column;gap:8px;max-width:380px';
+      container.style.cssText = 'position:fixed;right:16px;bottom:34px;z-index:99999;pointer-events:none;display:flex;flex-direction:column;gap:8px;max-width:360px;max-height:320px;overflow:hidden';
       document.body.appendChild(container);
     }
-    const bg = type === 'error' ? '#ef4444' : type === 'success' ? '#22c55e' : type === 'warn' ? '#f59e0b' : '#3b82f6';
+    while (container.children.length >= 3) {
+      container.firstElementChild?.remove();
+    }
+    const tone = type === 'error'
+      ? '#ef4444'
+      : type === 'success'
+        ? '#22c55e'
+        : type === 'warn'
+          ? '#e3b341'
+          : '#8aa0b8';
     const toast = document.createElement('div');
-    toast.style.cssText = `pointer-events:auto;background:${bg};color:#fff;padding:10px 16px;border-radius:6px;font-size:12px;box-shadow:0 4px 12px rgba(0,0,0,0.3);animation:slideIn 0.3s ease;cursor:pointer;word-break:break-word`;
+    toast.style.cssText = `pointer-events:auto;background:#111820;color:#f5f7fa;padding:10px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);border-left:3px solid ${tone};font-size:12px;box-shadow:0 18px 45px rgba(0,0,0,0.42);animation:slideIn 0.3s ease;cursor:pointer;word-break:break-word`;
     toast.textContent = message;
     toast.onclick = () => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); };
     container.appendChild(toast);
@@ -132,7 +141,7 @@ window.queueSSEManager = queueSSEManager;
 queueSSEManager.connect();
 window.addEventListener('beforeunload', () => queueSSEManager.disconnect());
 
-/* â”€â”€â”€ Client-side error log â”€â”€â”€ */
+/* ─── Client-side error log ─── */
 const clientLogs = [];
 const MAX_CLIENT_LOGS = 200;
 
@@ -185,7 +194,29 @@ async function api(method, path, body = null) {
 }
 
 function apiGet(path) { return api('GET', path); }
-function apiPost(path, body) { return api('POST', path, body); }
+async function apiPost(path, body) {
+  if (path === '/ai/summary' && body && body.model && !body.engine) {
+    body = { ...body, engine: body.model };
+    delete body.model;
+  }
+  if ((path === '/ai/characters' || path === '/ai/speakers') && body && !body.video_path) {
+    body = { ...body, video_path: document.getElementById('inp-video-path')?.value || document.getElementById('inp-srt-path')?.value || '' };
+  }
+  if (path === '/ai/hashtags' && body && !body.text) {
+    body = { ...body, text: document.getElementById('inp-ai-summary')?.value || '' };
+  }
+  const res = await api('POST', path, body);
+  if (path && path.startsWith('/ai/') && res && res.id) {
+    const queuedText = `Queued job #${res.id}. Open Queue to view output when completed.`;
+    if (path === '/ai/summary') return { ...res, summary: queuedText };
+    if (path === '/ai/recap') return { ...res, recap: queuedText };
+    if (path === '/ai/characters') return { ...res, characters: [queuedText] };
+    if (path === '/ai/speakers') return { ...res, speakers: { queued: queuedText } };
+    if (path === '/ai/title') return { ...res, titles: [queuedText] };
+    if (path === '/ai/hashtags') return { ...res, hashtags: [queuedText] };
+  }
+  return res;
+}
 function apiPut(path, body) { return api('PUT', path, body); }
 function apiDel(path) { return api('DELETE', path); }
 
@@ -298,7 +329,7 @@ function validate(value, rule, customMessage, ...args) {
   return true;
 }
 
-/* â”€â”€â”€ Health check & Stats â”€â”€â”€ */
+/* ─── Health check & Stats ─── */
 async function loadDashboard() {
   const health = await apiGet('/health');
   const stats = await apiGet('/stats');
@@ -343,7 +374,7 @@ async function loadDashboard() {
   }
 }
 
-/* Tab switching â€“ Processing Panel */
+/* Tab switching – Processing Panel */
 (function () {
   var tabs = document.querySelectorAll('#processing-tabs .tab');
   var contents = document.querySelectorAll('.tab-content');
@@ -414,98 +445,98 @@ async function loadDashboard() {
 /* Sidebar feature flyout - Full Tree */
 const sidebarTree = {
   home: {
-    title: 'Trang chá»§',
+    title: 'Trang chủ',
     tree: [
-      { icon: 'ri-dashboard-2-line', label: 'Báº£ng Ä‘iá»u khiá»ƒn' },
-      { icon: 'ri-history-line', label: 'Dá»± Ã¡n gáº§n Ä‘Ã¢y' },
-      { icon: 'ri-bar-chart-2-line', label: 'Thá»‘ng kÃª' },
+      { icon: 'ri-dashboard-2-line', label: 'Bảng điều khiển' },
+      { icon: 'ri-history-line', label: 'Dự án gần đây' },
+      { icon: 'ri-bar-chart-2-line', label: 'Thống kê' },
       {
-        label: 'TÃ i nguyÃªn', icon: 'ri-archive-stack-line', children: [
+        label: 'Tài nguyên', icon: 'ri-archive-stack-line', children: [
           {
             label: 'Videos', children: [
-              { label: 'Gá»‘c' },
-              { label: 'ÄÃ£ sá»­a' },
-              { label: 'ÄÃ£ xuáº¥t' }
+              { label: 'Gốc' },
+              { label: 'Đã sửa' },
+              { label: 'Đã xuất' }
             ]
           },
           {
-            label: 'Ã‚m thanh', children: [
-              { label: 'Nháº¡c ná»n' },
-              { label: 'Giá»ng Ä‘á»c' },
-              { label: 'Hiá»‡u á»©ng' }
+            label: 'Âm thanh', children: [
+              { label: 'Nhạc nền' },
+              { label: 'Giọng đọc' },
+              { label: 'Hiệu ứng' }
             ]
           },
           {
-            label: 'Phá»¥ Ä‘á»', children: [
-              { label: 'Nguá»“n' },
-              { label: 'Dá»‹ch thuáº­t' }
+            label: 'Phụ đề', children: [
+              { label: 'Nguồn' },
+              { label: 'Dịch thuật' }
             ]
           },
           {
-            label: 'NhÃ£n hiá»‡u', children: [
+            label: 'Nhãn hiệu', children: [
               { label: 'Logo' },
-              { label: 'HÃ¬nh má»' },
+              { label: 'Hình mờ' },
               { label: 'QR' }
             ]
           },
-          { label: 'Máº«u sáºµn (Template)' }
+          { label: 'Mẫu sẵn (Template)' }
         ]
       }
     ]
   },
   project: {
-    title: 'Dá»± Ã¡n',
+    title: 'Dự án',
     tree: [
-      { icon: 'ri-add-box-line', label: 'Táº¡o má»›i' },
-      { icon: 'ri-folder-open-line', label: 'Má»Ÿ' },
-      { icon: 'ri-save-3-line', label: 'LÆ°u' },
-      { icon: 'ri-history-line', label: 'Lá»‹ch sá»­ phiÃªn báº£n' },
-      { icon: 'ri-cloud-line', label: 'Sao lÆ°u tá»± Ä‘á»™ng' },
+      { icon: 'ri-add-box-line', label: 'Tạo mới' },
+      { icon: 'ri-folder-open-line', label: 'Mở' },
+      { icon: 'ri-save-3-line', label: 'Lưu' },
+      { icon: 'ri-history-line', label: 'Lịch sử phiên bản' },
+      { icon: 'ri-cloud-line', label: 'Sao lưu tự động' },
       { icon: 'ri-layout-grid-line', label: 'Template' },
-      { icon: 'ri-stack-line', label: 'Dá»± Ã¡n hÃ ng loáº¡t' }
+      { icon: 'ri-stack-line', label: 'Dự án hàng loạt' }
     ]
   },
   download: {
-    title: 'Táº£i vá»',
+    title: 'Tải về',
     tree: [
       { icon: 'ri-youtube-line', label: 'YouTube' },
       { icon: 'ri-tiktok-line', label: 'TikTok' },
       { icon: 'ri-video-line', label: 'Douyin' },
       { icon: 'ri-facebook-line', label: 'Facebook' },
       { icon: 'ri-instagram-line', label: 'Instagram' },
-      { icon: 'ri-play-list-line', label: 'Danh sÃ¡ch phÃ¡t' },
-      { icon: 'ri-cookie-line', label: 'Quáº£n lÃ½ Cookie' },
-      { icon: 'ri-global-line', label: 'Quáº£n lÃ½ Proxy' },
-      { icon: 'ri-link-m', label: 'URL hÃ ng loáº¡t' }
+      { icon: 'ri-play-list-line', label: 'Danh sách phát' },
+      { icon: 'ri-cookie-line', label: 'Quản lý Cookie' },
+      { icon: 'ri-global-line', label: 'Quản lý Proxy' },
+      { icon: 'ri-link-m', label: 'URL hàng loạt' }
     ]
   },
   subtitle: {
-    title: 'Phá»¥ Ä‘á»',
+    title: 'Phụ đề',
     tree: [
       {
-        label: 'Nháº­p phá»¥ Ä‘á»', icon: 'ri-upload-cloud-2-line', children: [
+        label: 'Nhập phụ đề', icon: 'ri-upload-cloud-2-line', children: [
           { label: 'SRT' },
           { label: 'ASS' },
-          { label: 'GhÃ©p phá»¥ Ä‘á»' }
+          { label: 'Ghép phụ đề' }
         ]
       },
       {
-        label: 'Dá»‹ch thuáº­t', icon: 'ri-translate-2', children: [
+        label: 'Dịch thuật', icon: 'ri-translate-2', children: [
           { label: 'GPT' },
           { label: 'Gemini' },
-          { label: 'Dá»‹ch hÃ ng loáº¡t' }
+          { label: 'Dịch hàng loạt' }
         ]
       },
       {
-        label: 'Kiá»ƒu dÃ¡ng', icon: 'ri-font-size', children: [
-          { label: 'Font chá»¯' },
-          { label: 'MÃ u sáº¯c' },
-          { label: 'Äá»• bÃ³ng' }
+        label: 'Kiểu dáng', icon: 'ri-font-size', children: [
+          { label: 'Font chữ' },
+          { label: 'Màu sắc' },
+          { label: 'Đổ bóng' }
         ]
       },
       {
-        label: 'Xuáº¥t phá»¥ Ä‘á»', icon: 'ri-download-2-line', children: [
-          { label: 'Gáº¯n cá»©ng' },
+        label: 'Xuất phụ đề', icon: 'ri-download-2-line', children: [
+          { label: 'Gắn cứng' },
           { label: 'SRT' },
           { label: 'ASS' }
         ]
@@ -513,7 +544,7 @@ const sidebarTree = {
     ]
   },
   voice: {
-    title: 'Giá»ng Ä‘á»c',
+    title: 'Giọng đọc',
     tree: [
       {
         label: 'TTS', icon: 'ri-mic-2-line', children: [
@@ -524,42 +555,42 @@ const sidebarTree = {
         ]
       },
       {
-        label: 'NhÃ¢n báº£n giá»ng nÃ³i', icon: 'ri-user-voice-line', children: [
-          { label: 'Táº£i lÃªn máº«u' },
-          { label: 'Huáº¥n luyá»‡n' },
-          { label: 'Xuáº¥t giá»ng nÃ³i' }
+        label: 'Nhân bản giọng nói', icon: 'ri-user-voice-line', children: [
+          { label: 'Tải lên mẫu' },
+          { label: 'Huấn luyện' },
+          { label: 'Xuất giọng nói' }
         ]
       },
       {
-        label: 'Äa giá»ng Ä‘á»c', icon: 'ri-team-line', children: [
-          { label: 'Ãnh xáº¡ giá»ng Ä‘á»c' },
-          { label: 'Tá»± Ä‘á»™ng nháº­n diá»‡n' }
+        label: 'Đa giọng đọc', icon: 'ri-team-line', children: [
+          { label: 'Ánh xạ giọng đọc' },
+          { label: 'Tự động nhận diện' }
         ]
       },
-      { label: 'ThÆ° viá»‡n giá»ng Ä‘á»c', icon: 'ri-voiceprint-line' }
+      { label: 'Thư viện giọng đọc', icon: 'ri-voiceprint-line' }
     ]
   },
   ai: {
-    title: 'TrÃ­ tuá»‡ nhÃ¢n táº¡o (AI)',
+    title: 'Trí tuệ nhân tạo (AI)',
     tree: [
-      { icon: 'ri-scissors-cut-line', label: 'TÃ¡ch phÃ¢n cáº£nh' },
-      { icon: 'ri-file-text-line', label: 'TÃ³m táº¯t tá»± Ä‘á»™ng' },
-      { icon: 'ri-film-line', label: 'Review phim tá»± Ä‘á»™ng' },
-      { icon: 'ri-user-smile-line', label: 'Nháº­n diá»‡n nhÃ¢n váº­t' },
-      { icon: 'ri-voiceprint-line', label: 'Nháº­n diá»‡n ngÆ°á»i nÃ³i' },
-      // { icon: 'ri-image-line', label: 'Táº¡o áº£nh bÃ¬a' },
-      { icon: 'ri-font-size', label: 'Táº¡o tiÃªu Ä‘á»' },
-      { icon: 'ri-hashtag-line', label: 'Táº¡o Hashtag' },
-      { icon: 'ri-bubble-chart-line', label: 'ThÆ° viá»‡n cÃ¢u lá»‡nh' }
+      { icon: 'ri-scissors-cut-line', label: 'Tách phân cảnh' },
+      { icon: 'ri-file-text-line', label: 'Tóm tắt tự động' },
+      { icon: 'ri-film-line', label: 'Review phim tự động' },
+      { icon: 'ri-user-smile-line', label: 'Nhận diện nhân vật' },
+      { icon: 'ri-voiceprint-line', label: 'Nhận diện người nói' },
+      // { icon: 'ri-image-line', label: 'Tạo ảnh bìa' },
+      { icon: 'ri-font-size', label: 'Tạo tiêu đề' },
+      { icon: 'ri-hashtag-line', label: 'Tạo Hashtag' },
+      { icon: 'ri-bubble-chart-line', label: 'Thư viện câu lệnh' }
     ]
   },
   export: {
-    title: 'Xuáº¥t báº£n',
+    title: 'Xuất bản',
     tree: [
-      { icon: 'ri-movie-2-line', label: 'Káº¿t xuáº¥t' },
-      { icon: 'ri-list-check-3', label: 'HÃ ng chá»' },
-      { icon: 'ri-equalizer-line', label: 'Máº«u thiáº¿t láº­p' },
-      { icon: 'ri-upload-cloud-2-line', label: 'Táº£i lÃªn' },
+      { icon: 'ri-movie-2-line', label: 'Kết xuất' },
+      { icon: 'ri-list-check-3', label: 'Hàng chờ' },
+      { icon: 'ri-equalizer-line', label: 'Mẫu thiết lập' },
+      { icon: 'ri-upload-cloud-2-line', label: 'Tải lên' },
       {
         label: 'Video', icon: 'ri-video-line', children: [
           { label: 'MP4' },
@@ -568,7 +599,7 @@ const sidebarTree = {
         ]
       },
       {
-        label: 'MÃ£ hÃ³a (Codec)', icon: 'ri-cpu-line', children: [
+        label: 'Mã hóa (Codec)', icon: 'ri-cpu-line', children: [
           { label: 'H264' },
           { label: 'H265' },
           { label: 'AV1' }
@@ -582,7 +613,7 @@ const sidebarTree = {
         ]
       },
       {
-        label: 'ÄÄƒng táº£i', icon: 'ri-share-line', children: [
+        label: 'Đăng tải', icon: 'ri-share-line', children: [
           { label: 'YouTube' },
           { label: 'TikTok' },
           { label: 'Facebook' }
@@ -591,29 +622,29 @@ const sidebarTree = {
     ]
   },
   queue: {
-    title: 'HÃ ng chá»',
+    title: 'Hàng chờ',
     tree: [
-      { icon: 'ri-play-circle-line', label: 'Äang cháº¡y' },
-      { icon: 'ri-time-line', label: 'Äang chá»' },
-      { icon: 'ri-checkbox-circle-line', label: 'ÄÃ£ hoÃ n thÃ nh' },
-      { icon: 'ri-close-circle-line', label: 'Tháº¥t báº¡i' },
-      { icon: 'ri-refresh-line', label: 'Thá»­ láº¡i tá»‡p lá»—i' },
-      { icon: 'ri-pause-line', label: 'Táº¡m dá»«ng táº¥t cáº£' },
-      { icon: 'ri-play-line', label: 'Tiáº¿p tá»¥c táº¥t cáº£' },
-      { icon: 'ri-arrow-up-line', label: 'Äá»™ Æ°u tiÃªn' }
+      { icon: 'ri-play-circle-line', label: 'Đang chạy' },
+      { icon: 'ri-time-line', label: 'Đang chờ' },
+      { icon: 'ri-checkbox-circle-line', label: 'Đã hoàn thành' },
+      { icon: 'ri-close-circle-line', label: 'Thất bại' },
+      { icon: 'ri-refresh-line', label: 'Thử lại tệp lỗi' },
+      { icon: 'ri-pause-line', label: 'Tạm dừng tất cả' },
+      { icon: 'ri-play-line', label: 'Tiếp tục tất cả' },
+      { icon: 'ri-arrow-up-line', label: 'Độ ưu tiên' }
     ]
   },
   settings: {
-    title: 'CÃ i Ä‘áº·t',
+    title: 'Cài đặt',
     tree: [
       { icon: 'ri-settings-4-line', label: 'Chung' },
       { icon: 'ri-key-2-line', label: 'API Keys' },
-      { icon: 'ri-sparkling-line', label: 'MÃ´ hÃ¬nh AI' },
+      { icon: 'ri-sparkling-line', label: 'Mô hình AI' },
       { icon: 'ri-cpu-line', label: 'GPU' },
       { icon: 'ri-terminal-box-line', label: 'FFmpeg' },
       { icon: 'ri-global-line', label: 'Proxy' },
-      { icon: 'ri-refresh-line', label: 'Cáº­p nháº­t' },
-      { icon: 'ri-information-line', label: 'Giá»›i thiá»‡u' }
+      { icon: 'ri-refresh-line', label: 'Cập nhật' },
+      { icon: 'ri-information-line', label: 'Giới thiệu' }
     ]
   }
 };
@@ -725,7 +756,7 @@ document.querySelectorAll('.live-range').forEach(range => {
   });
 });
 
-/* â”€â”€â”€ Load button (API) â”€â”€â”€ */
+/* ─── Load button (API) ─── */
 document.getElementById('btn-browse-video')?.addEventListener('click', async () => {
   console.log('[Browse] btn-browse-video clicked');
   const res = await apiGet('/system/browse?type=file&ext=video');
@@ -770,7 +801,7 @@ document.getElementById('btn-load')?.addEventListener('click', async () => {
       name: 'project_' + Date.now(),
       preset: preset,
     });
-    if (!project) throw new Error('KhÃ´ng thá»ƒ táº¡o dá»± Ã¡n');
+    if (!project) throw new Error('Không thể tạo dự án');
     currentProjectId = project.id;
 
     if (loadProgress) loadProgress.style.width = '35%';
@@ -798,30 +829,30 @@ document.getElementById('btn-load')?.addEventListener('click', async () => {
     console.error('[Load] Error loading project data:', e);
     if (loadProgress) loadProgress.style.width = '0%';
     if (loadPct) loadPct.textContent = '0%';
-    alert('Lá»—i khi load dá»¯ liá»‡u: ' + (e.message || e));
+    alert('Lỗi khi load dữ liệu: ' + (e.message || e));
   }
 });
 
-/* â”€â”€â”€ Execute button (API) â”€â”€â”€ */
+/* ─── Execute button (API) ─── */
 const executeBtn = document.getElementById('btn-execute');
 const executeCountMax = 5;
 let executeCount = executeCountMax;
 
-const LANG_MAP_EXEC = { 'Tiáº¿ng Anh': 'en', 'Tiáº¿ng Trung': 'zh', 'Tiáº¿ng Nháº­t': 'ja', 'Tiáº¿ng HÃ n': 'ko', 'Tiáº¿ng Viá»‡t': 'vi' };
+const LANG_MAP_EXEC = { 'Tiếng Anh': 'en', 'Tiếng Trung': 'zh', 'Tiếng Nhật': 'ja', 'Tiếng Hàn': 'ko', 'Tiếng Việt': 'vi' };
 
 executeBtn.addEventListener('click', async () => {
   if (isRunning) return;
 
   const inputPath = document.getElementById('inp-video-path')?.value || document.getElementById('inp-srt-path')?.value || '';
   if (!inputPath) {
-    alert('Vui lÃ²ng chá»n file video hoáº·c subtitle trÆ°á»›c!');
+    alert('Vui lòng chọn file video hoặc subtitle trước!');
     return;
   }
 
   isRunning = true;
   executeCount--;
   if (executeCount <= 0) executeCount = executeCountMax;
-  executeBtn.textContent = `â–¶ ÄANG Xá»¬ LÃ...`;
+  executeBtn.textContent = `Đang xử lý...`;
   executeBtn.style.background = '#f59e0b';
 
   const inputName = inputPath.split(/[\\/]/).pop().replace(/\.[^.]+$/, '') || 'output';
@@ -860,9 +891,9 @@ executeBtn.addEventListener('click', async () => {
   addTaskRow();
 
   if (!item || !item.id) {
-    addClientLog('error', 'Backend khÃ´ng táº¡o Ä‘Æ°á»£c job. Kiá»ƒm tra API key vÃ  file input.');
+    addClientLog('error', 'Backend không tạo được job. Kiểm tra API key và file input.');
     isRunning = false;
-    executeBtn.textContent = `â–¶ THá»°C HIá»†N (${executeCount})`;
+    executeBtn.textContent = `Render`;
     executeBtn.style.background = '#ef4444';
     updateLastRow(0, 'failed');
     return;
@@ -918,12 +949,12 @@ function pollQueueUntilDone(jobId, onTrackUpdate, stopTracking) {
 function finishExecute() {
   isRunning = false;
   progressVal = 0;
-  executeBtn.textContent = `â–¶ THá»°C HIá»†N (${executeCount})`;
+  executeBtn.textContent = `Render`;
   executeBtn.style.background = '#39414d';
   remainingEl.textContent = '00:00:00';
 }
 
-/* â”€â”€â”€ Shared state â”€â”€â”€ */
+/* ─── Shared state ─── */
 let progressVal = 0;
 let isRunning = false;
 let timerInterval = null;
@@ -948,14 +979,14 @@ function startCountdown(seconds) {
   }, 1000);
 }
 
-/* â”€â”€â”€ Preset Save â”€â”€â”€ */
+/* ─── Preset Save ─── */
 document.getElementById('btn-save-preset')?.addEventListener('click', async () => {
   const name = document.getElementById('sel-project-preset')?.value || 'Custom';
   const preset = {
     name: name,
     voice: {
       provider: document.getElementById('sel-tts-provider')?.value || 'edge',
-      voice: document.getElementById('sel-voice-type')?.value || 'Máº·c Äá»‹nh',
+      voice: document.getElementById('sel-voice-type')?.value || 'Mặc Định',
       speed: 1.0,
       keep_bgm: document.getElementById('chk-keep-bgm')?.checked || false,
       bgm_volume: parseFloat(document.getElementById('inp-bgm-vol')?.value || '0.1'),
@@ -990,10 +1021,10 @@ document.getElementById('btn-save-preset')?.addEventListener('click', async () =
   await apiPost('/presets?name=' + encodeURIComponent(name), preset);
 });
 
-/* â”€â”€â”€ Scene Detect â”€â”€â”€ */
+/* ─── Scene Detect ─── */
 document.getElementById('btn-detect-scenes')?.addEventListener('click', async () => {
   const btn = document.getElementById('btn-detect-scenes');
-  btn.textContent = 'â³ Äang phÃ¢n tÃ­ch...';
+  btn.textContent = '⏳ Đang phân tích...';
   btn.disabled = true;
   const videoPath = document.getElementById('inp-video-path')?.value || document.getElementById('inp-srt-path')?.value || '';
   if (videoPath) {
@@ -1004,12 +1035,12 @@ document.getElementById('btn-detect-scenes')?.addEventListener('click', async ()
     });
   }
   setTimeout(() => {
-    btn.innerHTML = '<i class="ri-scissors-cut-line"></i> PhÃ¢n tÃ­ch';
+    btn.innerHTML = '<i class="ri-scissors-cut-line"></i> Phân tích';
     btn.disabled = false;
   }, 2000);
 });
 
-/* â”€â”€â”€ Task Queue Rows â”€â”€â”€ */
+/* ─── Task Queue Rows ─── */
 const resultBody = document.getElementById('result-table-body');
 let rowCount = 0;
 
@@ -1041,7 +1072,7 @@ function updateLastRow(pct) {
   }
 }
 
-/* â”€â”€â”€ Crop checkbox toggle â”€â”€â”€ */
+/* ─── Crop checkbox toggle ─── */
 document.getElementById('chk-crop-video')?.addEventListener('change', function () {
   const pos = document.getElementById('inp-crop-pos');
   const btn = document.getElementById('btn-chon-vi-tri');
@@ -1056,7 +1087,7 @@ const chonViTri = document.getElementById('btn-chon-vi-tri');
 if (cropPos) { cropPos.disabled = true; cropPos.style.opacity = '0.4'; }
 if (chonViTri) { chonViTri.disabled = true; chonViTri.style.opacity = '0.4'; }
 
-/* â”€â”€â”€ Resize checkbox toggle â”€â”€â”€ */
+/* ─── Resize checkbox toggle ─── */
 document.getElementById('chk-resize')?.addEventListener('change', function () {
   ['inp-height', 'inp-width', 'chk-keep-ratio'].forEach(id => {
     const el = document.getElementById(id);
@@ -1068,12 +1099,12 @@ document.getElementById('chk-resize')?.addEventListener('change', function () {
   });
 });
 
-/* â”€â”€â”€ Social button tooltips / links (demo) â”€â”€â”€ */
+/* ─── Social button tooltips / links (demo) ─── */
 document.querySelectorAll('.social-btn').forEach(btn => {
   btn.title = btn.title || btn.textContent;
 });
 
-/* â”€â”€â”€ Drag-over file drop on SRT path â”€â”€â”€ */
+/* ─── Drag-over file drop on SRT path ─── */
 const srtInput = document.getElementById('inp-srt-path');
 if (srtInput) {
   srtInput.addEventListener('dragover', e => { e.preventDefault(); srtInput.style.borderColor = 'var(--accent)'; });
@@ -1100,7 +1131,7 @@ if (videoInput) {
   });
 }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• SUBTITLE TREE CONTROL â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════ SUBTITLE TREE CONTROL ═══════════════ */
 /* Tree leaf switching */
 document.querySelectorAll('.tree-node.leaf').forEach(leaf => {
   leaf.addEventListener('click', () => {
@@ -1128,13 +1159,13 @@ document.querySelectorAll('.tree-node.parent').forEach(parent => {
   });
 });
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• QUEUE CONTROLS (API) â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════ QUEUE CONTROLS (API) ═══════════════ */
 document.getElementById('btn-retry-failed')?.addEventListener('click', async () => {
   await apiPost('/queue/retry-all');
   document.querySelectorAll('.queue-job[data-status="failed"]').forEach(job => {
     job.dataset.status = 'running';
     const icon = job.querySelector('.queue-status-icon');
-    if (icon) { icon.textContent = 'â–¶'; icon.className = 'queue-status-icon running'; }
+    if (icon) { icon.textContent = '▶'; icon.className = 'queue-status-icon running'; }
     job.classList.add('active');
   });
 });
@@ -1144,7 +1175,7 @@ document.getElementById('btn-pause-queue')?.addEventListener('click', async () =
   document.querySelectorAll('.queue-job[data-status="running"]').forEach(job => {
     job.dataset.status = 'paused';
     const icon = job.querySelector('.queue-status-icon');
-    if (icon) { icon.textContent = 'â¸'; icon.className = 'queue-status-icon paused'; }
+    if (icon) { icon.textContent = '⏸'; icon.className = 'queue-status-icon paused'; }
   });
 });
 
@@ -1153,13 +1184,13 @@ document.getElementById('btn-resume-queue')?.addEventListener('click', async () 
   document.querySelectorAll('.queue-job[data-status="paused"]').forEach(job => {
     job.dataset.status = 'running';
     const icon = job.querySelector('.queue-status-icon');
-    if (icon) { icon.textContent = 'â–¶'; icon.className = 'queue-status-icon running'; }
+    if (icon) { icon.textContent = '▶'; icon.className = 'queue-status-icon running'; }
     job.classList.add('active');
   });
 });
 
 document.getElementById('btn-clear-queue')?.addEventListener('click', async () => {
-  if (confirm('Báº¡n cÃ³ cháº¯c muá»‘n xÃ³a sáº¡ch danh sÃ¡ch hÃ ng Ä‘á»£i?')) {
+  if (confirm('Bạn có chắc muốn xóa sạch danh sách hàng đợi?')) {
     await apiPost('/queue/clear-all');
     const resultBody = document.getElementById('result-table-body');
     if (resultBody) resultBody.innerHTML = '';
@@ -1167,7 +1198,7 @@ document.getElementById('btn-clear-queue')?.addEventListener('click', async () =
   }
 });
 
-/* â”€â”€ Log Viewer â”€â”€ */
+/* ── Log Viewer ── */
 const logModal = document.getElementById('log-modal');
 const logContainer = document.getElementById('log-container');
 const logCount = document.getElementById('log-count');
@@ -1180,7 +1211,7 @@ function escapeHtml(text) {
 
 function renderLogEntries(entries) {
   if (!entries || entries.length === 0) {
-    return '<div class="log-placeholder">KhÃ´ng tÃ¬m tháº¥y báº£n ghi log nÃ o.</div>';
+    return '<div class="log-placeholder">Không tìm thấy bản ghi log nào.</div>';
   }
   return entries.map(e => {
     const cls = `log-level ${e.level || 'info'}`;
@@ -1223,11 +1254,11 @@ async function fetchLogs() {
     allLogs = allLogs.filter(l => l.level === filterLevel);
   }
 
-  if (logCount) logCount.textContent = `${allLogs.length} báº£n ghi`;
+  if (logCount) logCount.textContent = `${allLogs.length} bản ghi`;
   if (!logContainer) return;
 
   if (allLogs.length === 0) {
-    logContainer.innerHTML = '<div class="log-placeholder">KhÃ´ng tÃ¬m tháº¥y báº£n ghi log nÃ o.</div>';
+    logContainer.innerHTML = '<div class="log-placeholder">Không tìm thấy bản ghi log nào.</div>';
     return;
   }
 
@@ -1256,7 +1287,7 @@ document.getElementById('btn-log-copy')?.addEventListener('click', () => {
   navigator.clipboard.writeText(text).then(() => {
     const btn = document.getElementById('btn-log-copy');
     const orig = btn.innerHTML;
-    btn.innerHTML = '<i class="ri-check-line"></i> ÄÃ£ sao chÃ©p';
+    btn.innerHTML = '<i class="ri-check-line"></i> Đã sao chép';
     setTimeout(() => btn.innerHTML = orig, 1500);
   }).catch(() => {
     // fallback
@@ -1269,7 +1300,7 @@ document.getElementById('btn-log-copy')?.addEventListener('click', () => {
   });
 });
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• FLYOUT LEAF â†’ PANEL WIRING â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════ FLYOUT LEAF → PANEL WIRING ═══════════════ */
 const navToTabMap = {
   subtitle: 'tab-subtitle',
   voice: 'tab-voice',
@@ -1279,27 +1310,27 @@ const navToTabMap = {
 
 const sidebarActionMap = {
   'cookie manager': { type: 'modal', target: 'settings-modal' },
-  'quáº£n lÃ½ cookie': { type: 'modal', target: 'settings-modal' },
+  'quản lý cookie': { type: 'modal', target: 'settings-modal' },
   'proxy manager': { type: 'modal', target: 'settings-modal' },
-  'quáº£n lÃ½ proxy': { type: 'modal', target: 'settings-modal' },
+  'quản lý proxy': { type: 'modal', target: 'settings-modal' },
   'batch url': { type: 'modal', target: 'download-modal' },
-  'url hÃ ng loáº¡t': { type: 'modal', target: 'download-modal' },
+  'url hàng loạt': { type: 'modal', target: 'download-modal' },
   'version history': { type: 'modal', target: 'version-modal' },
-  'lá»‹ch sá»­ phiÃªn báº£n': { type: 'modal', target: 'version-modal' },
+  'lịch sử phiên bản': { type: 'modal', target: 'version-modal' },
   'auto backup': { type: 'function', fn: 'toggleAutoBackup' },
-  'sao lÆ°u tá»± Ä‘á»™ng': { type: 'function', fn: 'toggleAutoBackup' },
+  'sao lưu tự động': { type: 'function', fn: 'toggleAutoBackup' },
   'templates': { type: 'function', fn: 'openTemplates' },
   'template': { type: 'function', fn: 'openTemplates' },
-  'máº«u sáºµn (template)': { type: 'function', fn: 'openTemplates' },
+  'mẫu sẵn (template)': { type: 'function', fn: 'openTemplates' },
 };
 
 const projectActionMap = {
   'create': { type: 'function', fn: 'createProject' },
-  'táº¡o má»›i': { type: 'function', fn: 'createProject' },
+  'tạo mới': { type: 'function', fn: 'createProject' },
   'open': { type: 'function', fn: 'openProject' },
-  'má»Ÿ': { type: 'function', fn: 'openProject' },
+  'mở': { type: 'function', fn: 'openProject' },
   'save': { type: 'function', fn: 'saveProject' },
-  'lÆ°u': { type: 'function', fn: 'saveProject' },
+  'lưu': { type: 'function', fn: 'saveProject' },
 };
 
 sidebarFlyout?.addEventListener('click', (e) => {
@@ -1327,13 +1358,13 @@ sidebarFlyout?.addEventListener('click', (e) => {
   if (projectActionMap[leafLabel]) {
     const action = projectActionMap[leafLabel];
     if (action.fn === 'createProject') {
-      const name = prompt('TÃªn dá»± Ã¡n:', 'project_' + Date.now());
+      const name = prompt('Tên dự án:', 'project_' + Date.now());
       if (name) apiPost('/projects', { name, preset: document.getElementById('sel-project-preset')?.value || 'Movie Review' }).then(p => {
-        if (p) { currentProjectId = p.id; alert(`ÄÃ£ táº¡o dá»± Ã¡n: ${name} (ID: ${p.id})`); }
+        if (p) { currentProjectId = p.id; alert(`Đã tạo dự án: ${name} (ID: ${p.id})`); }
       });
     } else if (action.fn === 'saveProject') {
-      if (currentProjectId) apiPost(`/projects/${currentProjectId}/save`).then(r => alert(r?.message || 'ÄÃ£ lÆ°u'));
-      else alert('KhÃ´ng cÃ³ dá»± Ã¡n nÃ o Ä‘ang hoáº¡t Ä‘á»™ng');
+      if (currentProjectId) apiPost(`/projects/${currentProjectId}/save`).then(r => alert(r?.message || 'Đã lưu'));
+      else alert('Không có dự án nào đang hoạt động');
     }
     return;
   }
@@ -1347,10 +1378,10 @@ sidebarFlyout?.addEventListener('click', (e) => {
   }
 });
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• AI PANEL HANDLERS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════ AI PANEL HANDLERS ═══════════════ */
 document.getElementById('btn-ai-detect-scenes')?.addEventListener('click', async () => {
   const btn = document.getElementById('btn-ai-detect-scenes');
-  btn.textContent = 'â³ Äang quÃ©t...';
+  btn.textContent = '⏳ Đang quét...';
   btn.disabled = true;
   const videoPath = document.getElementById('inp-video-path')?.value || document.getElementById('inp-srt-path')?.value || '';
   if (videoPath) {
@@ -1361,7 +1392,7 @@ document.getElementById('btn-ai-detect-scenes')?.addEventListener('click', async
     });
   }
   setTimeout(() => {
-    btn.innerHTML = '<i class="ri-scissors-cut-line"></i> PhÃ¢n tÃ­ch';
+    btn.innerHTML = '<i class="ri-scissors-cut-line"></i> Phân tích';
     btn.disabled = false;
   }, 2000);
 });
@@ -1378,14 +1409,14 @@ document.getElementById('btn-ai-summary')?.addEventListener('click', async () =>
     el.textContent = result.summary;
     el.style.color = 'var(--text)';
   } else {
-    el.textContent = 'Dá»± phÃ²ng: KhÃ´ng thá»ƒ táº¡o tÃ³m táº¯t (CÃ³ thá»ƒ yÃªu cáº§u API key)';
+    el.textContent = 'Dự phòng: Không thể tạo tóm tắt (Có thể yêu cầu API key)';
     el.style.color = 'var(--yellow-warn)';
   }
 });
 
 document.getElementById('btn-ai-recap')?.addEventListener('click', async () => {
   const btn = document.getElementById('btn-ai-recap');
-  btn.textContent = 'â³ Äang táº¡o...';
+  btn.textContent = '⏳ Đang tạo...';
   btn.disabled = true;
   const result = await apiPost('/ai/recap', { project_id: currentProjectId || 1 });
   const el = document.getElementById('ai-recap-result');
@@ -1393,10 +1424,10 @@ document.getElementById('btn-ai-recap')?.addEventListener('click', async () => {
     el.textContent = result.recap;
     el.style.color = 'var(--text)';
   } else {
-    el.textContent = 'Dá»± phÃ²ng: TÃ³m táº¯t ná»™i dung phim sáº½ Ä‘Æ°á»£c táº¡o khi video Ä‘Æ°á»£c táº£i';
+    el.textContent = 'Dự phòng: Tóm tắt nội dung phim sẽ được tạo khi video được tải';
     el.style.color = 'var(--text-muted)';
   }
-  btn.innerHTML = '<i class="ri-film-line"></i> Táº¡o tÃ³m táº¯t phim';
+  btn.innerHTML = '<i class="ri-film-line"></i> Tạo tóm tắt phim';
   btn.disabled = false;
 });
 
@@ -1407,7 +1438,7 @@ document.getElementById('btn-ai-characters')?.addEventListener('click', async ()
     el.textContent = result.characters.join(', ');
     el.style.color = 'var(--text)';
   } else {
-    el.textContent = 'Dá»± phÃ²ng: Nháº­n diá»‡n nhÃ¢n váº­t yÃªu cáº§u video cÃ³ khuÃ´n máº·t';
+    el.textContent = 'Dự phòng: Nhận diện nhân vật yêu cầu video có khuôn mặt';
     el.style.color = 'var(--text-muted)';
   }
 });
@@ -1419,7 +1450,7 @@ document.getElementById('btn-ai-speakers')?.addEventListener('click', async () =
     el.textContent = Object.entries(result.speakers).map(([k, v]) => `${k}: ${v}`).join(' | ');
     el.style.color = 'var(--text)';
   } else {
-    el.textContent = 'Dá»± phÃ²ng: Nháº­n diá»‡n ngÆ°á»i nÃ³i sáº½ Ä‘Æ°á»£c xá»­ lÃ½ sau khi chuyá»ƒn Ã¢m';
+    el.textContent = 'Dự phòng: Nhận diện người nói sẽ được xử lý sau khi chuyển âm';
     el.style.color = 'var(--text-muted)';
   }
 });
@@ -1430,10 +1461,10 @@ document.getElementById('btn-ai-title')?.addEventListener('click', async () => {
   const result = await apiPost('/ai/title', { project_id: currentProjectId || 1 });
   const el = document.getElementById('ai-summary-result');
   if (result && result.titles) {
-    el.innerHTML = result.titles.map(t => `<div>â€¢ ${t}</div>`).join('');
+    el.innerHTML = result.titles.map(t => `<div>• ${t}</div>`).join('');
     el.style.color = 'var(--text)';
   } else {
-    el.textContent = 'Dá»± phÃ²ng: Táº¡o tiÃªu Ä‘á» sáº½ kháº£ dá»¥ng sau khi chuyá»ƒn Ã¢m';
+    el.textContent = 'Dự phòng: Tạo tiêu đề sẽ khả dụng sau khi chuyển âm';
     el.style.color = 'var(--text-muted)';
   }
 });
@@ -1445,24 +1476,31 @@ document.getElementById('btn-ai-hashtag')?.addEventListener('click', async () =>
     el.innerHTML = result.hashtags.map(h => `<span style="display:inline-block;background:var(--bg-input);padding:1px 6px;border-radius:2px;margin:1px">#${h}</span>`).join(' ');
     el.style.color = 'var(--text)';
   } else {
-    el.textContent = 'Dá»± phÃ²ng: Táº¡o hashtag sáº½ kháº£ dá»¥ng sau khi chuyá»ƒn Ã¢m';
+    el.textContent = 'Dự phòng: Tạo hashtag sẽ khả dụng sau khi chuyển âm';
     el.style.color = 'var(--text-muted)';
   }
 });
 
 document.getElementById('btn-ai-prompt')?.addEventListener('click', () => {
   const el = document.getElementById('ai-speakers-result');
-  el.textContent = 'ThÆ° viá»‡n Prompt: Sá»­ dá»¥ng cÃ¡c cÃ¢u lá»‡nh há»— trá»£ bá»Ÿi AI Ä‘á»ƒ chá»‰nh sá»­a video sÃ¡ng táº¡o. Sáº¯p ra máº¯t.';
+  el.textContent = 'Thư viện Prompt: Sử dụng các câu lệnh hỗ trợ bởi AI để chỉnh sửa video sáng tạo. Sắp ra mắt.';
   el.style.color = 'var(--text-muted)';
 });
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• EXPORT PANEL HANDLERS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════ EXPORT PANEL HANDLERS ═══════════════ */
 function getExportRenderParams() {
   const format = (document.getElementById('sel-export-format')?.value || 'MP4').toLowerCase();
   const codec = (document.getElementById('sel-export-codec')?.value || 'H264').toLowerCase();
-  const bitrate = document.getElementById('sel-export-bitrate')?.value || '8M';
+  const rawBitrate = document.getElementById('sel-export-bitrate')?.value || '8M';
+  const bitrate = /auto|tự|tu dong/i.test(rawBitrate) ? 'auto' : rawBitrate;
   const fps = document.getElementById('sel-export-fps')?.value || '30';
-  const gpu = document.getElementById('sel-export-gpu')?.value || 'CPU';
+  const gpu = (document.getElementById('sel-export-gpu')?.value || 'CPU').toLowerCase();
+  const presetName = document.getElementById('sel-export-preset')?.value || 'Movie Review';
+  const speedPreset = {
+    'Draft Fast': { preset: 'veryfast', quality: 'draft', bitrate: 'auto', width: 1280, height: 720, gpu: 'auto' },
+    'NVENC Fast': { preset: 'fast', quality: 'fast', gpu: 'nvenc' },
+    'Quality': { preset: 'slow', quality: 'quality', bitrate: 'auto', crf: '18' },
+  }[presetName] || {};
   const inputPath = document.getElementById('inp-video-path')?.value || document.getElementById('inp-srt-path')?.value || '';
   const inputName = inputPath.split(/[\\/]/).pop()?.replace(/\.[^.]+$/, '') || `project_${currentProjectId || 1}`;
   return {
@@ -1470,9 +1508,15 @@ function getExportRenderParams() {
     params: {
       format,
       codec,
-      bitrate,
+      bitrate: speedPreset.bitrate || bitrate,
       fps,
-      gpu,
+      gpu: speedPreset.gpu || gpu,
+      preset: speedPreset.preset || undefined,
+      quality: speedPreset.quality || undefined,
+      crf: speedPreset.crf || undefined,
+      width: speedPreset.width || undefined,
+      height: speedPreset.height || undefined,
+      copy_if_possible: true,
       output_name: inputName,
       output_dir: document.getElementById('inp-output-path')?.value || undefined,
       burn_subtitle: document.getElementById('chk-sub-burn')?.checked ?? true,
@@ -1500,6 +1544,7 @@ document.getElementById('btn-export-render')?.addEventListener('click', async ()
     params: render.params,
   });
   if (item) {
+    if (item.project_id) currentProjectId = item.project_id;
     addTaskRow();
   } else {
     addTaskRow();
@@ -1518,11 +1563,14 @@ function simulateProgress() {
 }
 
 document.getElementById('btn-export-audio')?.addEventListener('click', async () => {
-  const result = await apiPost('/export/audio', { project_id: currentProjectId || 1 });
+  const inputPath = document.getElementById('inp-video-path')?.value || document.getElementById('inp-srt-path')?.value || '';
+  if (!inputPath) {
+    alert('Vui long chon video truoc khi xuat am thanh.');
+    return;
+  }
+  const result = await apiPost('/export/audio', { project_id: currentProjectId || 1, input_path: inputPath });
   if (result && result.path) {
     addTaskRow();
-    const fill = document.getElementById(`mini-fill-${rowCount}`);
-    if (fill) fill.style.width = '100%';
   }
 });
 
@@ -1556,15 +1604,20 @@ document.getElementById('btn-export-save-preset')?.addEventListener('click', asy
 
 document.getElementById('btn-export-load-preset')?.addEventListener('click', async () => {
   const name = document.getElementById('sel-export-preset')?.value || 'Movie Review';
-  const preset = await apiGet('/presets?name=' + encodeURIComponent(name));
-  if (preset) {
-    if (preset.codec) document.getElementById('sel-export-codec').value = preset.codec;
-    if (preset.bitrate) document.getElementById('sel-export-bitrate').value = preset.bitrate;
-    if (preset.fps) document.getElementById('sel-export-fps').value = preset.fps;
+  const preset = await apiGet('/presets/' + encodeURIComponent(name));
+  const exportPreset = preset?.export || preset;
+  if (exportPreset) {
+    if (exportPreset.codec) document.getElementById('sel-export-codec').value = String(exportPreset.codec).toUpperCase();
+    if (exportPreset.bitrate) {
+      const bitrate = String(exportPreset.bitrate).toLowerCase() === 'auto' ? 'Tự động' : exportPreset.bitrate;
+      document.getElementById('sel-export-bitrate').value = bitrate;
+    }
+    if (exportPreset.fps) document.getElementById('sel-export-fps').value = exportPreset.fps;
+    if (exportPreset.gpu) document.getElementById('sel-export-gpu').value = String(exportPreset.gpu).toUpperCase() === 'AUTO' ? 'Auto' : String(exportPreset.gpu).toUpperCase();
   }
 });
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• VOICE CLONE HANDLERS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════ VOICE CLONE HANDLERS ═══════════════ */
 document.getElementById('btn-voice-upload')?.addEventListener('click', async () => {
   const fileInput = document.getElementById('inp-voice-sample');
   const file = fileInput?.files?.[0];
@@ -1583,11 +1636,11 @@ document.getElementById('btn-voice-upload')?.addEventListener('click', async () 
 
 document.getElementById('btn-voice-train')?.addEventListener('click', async () => {
   const btn = document.getElementById('btn-voice-train');
-  btn.textContent = 'â³ Äang huáº¥n luyá»‡n...';
+  btn.textContent = '⏳ Đang huấn luyện...';
   btn.disabled = true;
   await apiPost('/voice/clone/train', { project_id: currentProjectId || 1 });
   setTimeout(() => {
-    btn.innerHTML = '<i class="ri-user-voice-line"></i> Huáº¥n luyá»‡n Giá»ng Ä‘á»c';
+    btn.innerHTML = '<i class="ri-user-voice-line"></i> Huấn luyện Giọng đọc';
     btn.disabled = false;
   }, 3000);
 });
@@ -1604,9 +1657,9 @@ document.getElementById('btn-voice-export-clone')?.addEventListener('click', asy
 document.getElementById('btn-voice-speakers')?.addEventListener('click', async () => {
   const result = await apiPost('/ai/speakers', { project_id: currentProjectId || 1 });
   if (result && result.speakers) {
-    alert('ÄÃ£ phÃ¡t hiá»‡n ngÆ°á»i nÃ³i: ' + Object.keys(result.speakers).join(', '));
+    alert('Đã phát hiện người nói: ' + Object.keys(result.speakers).join(', '));
   } else {
-    alert('Nháº­n diá»‡n ngÆ°á»i nÃ³i sáº½ cháº¡y sau khi chuyá»ƒn Ã¢m.');
+    alert('Nhận diện người nói sẽ chạy sau khi chuyển âm.');
   }
 });
 
@@ -1616,7 +1669,7 @@ document.getElementById('chk-auto-diarize')?.addEventListener('change', function
   }
 });
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• NAV CLICK â†’ TAB SWITCHING â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════ NAV CLICK → TAB SWITCHING ═══════════════ */
 document.querySelectorAll('.nav-item').forEach(item => {
   item.addEventListener('click', () => {
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -1641,7 +1694,7 @@ document.querySelectorAll('.nav-item').forEach(item => {
   });
 });
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• TIMELINE WIRING â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════ TIMELINE WIRING ═══════════════ */
 async function loadTimeline(projectId) {
   const data = await apiGet(`/timeline/${projectId}`);
   if (!data) return;
@@ -1665,11 +1718,11 @@ async function loadTimeline(projectId) {
         const l = totalFrames > 0 ? ((c.position_frame || 0) / totalFrames * 100) : 0;
         return `<div class="${tt.clipClass}" style="width:${Math.max(w, 5)}%;left:${l}%" title="${escapeHtml(c.name || '')}">${escapeHtml(c.name || 'Clip')}</div>`;
       }).join('')
-      : '<span class="track-lane-empty">â€”</span>';
+      : '<span class="track-lane-empty">—</span>';
     return `
       <div class="track-row">
         <div class="track-label"><i class="${tt.icon}"></i> ${tt.label}</div>
-        <div class="track-lane">${clipsHtml || '<span class="track-lane-empty">â€”</span>'}</div>
+        <div class="track-lane">${clipsHtml || '<span class="track-lane-empty">—</span>'}</div>
       </div>
     `;
   }).join('');
@@ -1684,7 +1737,7 @@ async function loadTimeline(projectId) {
 }
 
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• MUSIC TAB HANDLERS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════ MUSIC TAB HANDLERS ═══════════════ */
 document.getElementById('btn-music-apply')?.addEventListener('click', async () => {
   const mVol = parseInt(document.getElementById('slider-music-volume')?.value || '35') / 100;
   const fIn = document.getElementById('chk-music-fade-in')?.checked ? 2 : 0;
@@ -1708,10 +1761,10 @@ document.getElementById('chk-music-duck')?.addEventListener('change', async func
 
 document.getElementById('btn-music-folder')?.addEventListener('click', async () => {
   const files = await apiGet('/music/files');
-  if (files) alert('Music files:\n' + files.map(f => 'â€¢ ' + f.name).join('\n'));
+  if (files) alert('Music files:\n' + files.map(f => '• ' + f.name).join('\n'));
 });
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• ENHANCE TAB HANDLERS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════ ENHANCE TAB HANDLERS ═══════════════ */
 document.getElementById('btn-enhance-apply')?.addEventListener('click', async () => {
   const lut = document.getElementById('sel-enhance-lut')?.value;
   const r = await apiPost('/enhance/apply', {
@@ -1726,7 +1779,7 @@ document.getElementById('btn-enhance-apply')?.addEventListener('click', async ()
   if (r) addTaskRow();
 });
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• EDIT TAB HANDLERS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════ EDIT TAB HANDLERS ═══════════════ */
 document.getElementById('btn-edit-rotate')?.addEventListener('click', async () => {
   const angle = document.querySelector('#tab-edit .text-input.num')?.value || '90';
   await apiPost('/edit/crop', {
@@ -1807,7 +1860,7 @@ document.getElementById('btn-edit-merge')?.addEventListener('click', async (even
   }
 });
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• SUBTITLE TAB HANDLERS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════ SUBTITLE TAB HANDLERS ═══════════════ */
 async function getSubtitleText() {
   // Priority 1: try to get already-imported subtitle from DB
   try {
@@ -1830,13 +1883,13 @@ document.getElementById('btn-sub-transcribe')?.addEventListener('click', async (
   const btn = document.getElementById('btn-sub-transcribe');
   const videoPath = document.getElementById('inp-video-path')?.value || '';
   if (!videoPath) {
-    alert('Vui lÃ²ng chá»n tá»‡p video á»Ÿ pháº§n "LOAD Dá»® LIá»†U (BÆ¯á»šC 1)" trÆ°á»›c!');
+    alert('Vui lòng chọn tệp video ở phần "Nguồn vào" trước!');
     return;
   }
 
   btn.disabled = true;
   const oldText = btn.innerHTML;
-  btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Äang nháº­n diá»‡n...';
+  btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Đang nhận diện...';
 
   try {
     if (!currentProjectId) {
@@ -1851,7 +1904,7 @@ document.getElementById('btn-sub-transcribe')?.addEventListener('click', async (
     }
 
     const lang = document.getElementById('sel-sub-transcribe-lang')?.value || 'vi';
-    const vocalSep = document.getElementById('chk-vocal-sep')?.checked ?? true;
+    const vocalSep = document.getElementById('chk-vocal-sep')?.checked ?? false;
     const useWhisperX = document.getElementById('chk-sub-whisperx')?.checked ?? true;
 
     const res = await apiPost('/queue', {
@@ -1866,13 +1919,13 @@ document.getElementById('btn-sub-transcribe')?.addEventListener('click', async (
     });
 
     if (res && res.id) {
-      alert('ÄÃ£ thÃªm tiáº¿n trÃ¬nh nháº­n dáº¡ng phá»¥ Ä‘á» gá»‘c (Whisper STT) vÃ o hÃ ng chá» thÃ nh cÃ´ng!');
+      alert('Đã thêm tiến trình nhận dạng phụ đề gốc (Whisper STT) vào hàng chờ thành công!');
       addTaskRow();
     } else {
-      alert('Táº¡o tiáº¿n trÃ¬nh hÃ ng chá» tháº¥t báº¡i.');
+      alert('Tạo tiến trình hàng chờ thất bại.');
     }
   } catch (e) {
-    alert('Lá»—i nháº­n dáº¡ng phá»¥ Ä‘á»: ' + e.message);
+    alert('Lỗi nhận dạng phụ đề: ' + e.message);
   } finally {
     btn.disabled = false;
     btn.innerHTML = oldText;
@@ -1911,19 +1964,19 @@ document.getElementById('btn-sub-ocr')?.addEventListener('click', async () => {
 document.getElementById('btn-sub-trans-gpt')?.addEventListener('click', async () => {
   const btn = document.getElementById('btn-sub-trans-gpt');
   const text = await getSubtitleText();
-  if (!text) { alert('ChÆ°a táº£i phá»¥ Ä‘á».'); return; }
+  if (!text) { alert('Chưa tải phụ đề.'); return; }
   btn.disabled = true;
   const oldText = btn.innerHTML;
-  btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Äang dá»‹ch...';
+  btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Đang dịch...';
   try {
     await apiPost('/subtitle/translate', {
       text, engine: 'gpt',
-      source_lang: document.getElementById('sel-lang-from')?.value === 'Tiáº¿ng Anh' ? 'en' : 'zh',
-      target_lang: document.getElementById('sel-lang-to')?.value === 'Tiáº¿ng Anh' ? 'en' : 'vi',
+      source_lang: document.getElementById('sel-lang-from')?.value === 'Tiếng Anh' ? 'en' : 'zh',
+      target_lang: document.getElementById('sel-lang-to')?.value === 'Tiếng Anh' ? 'en' : 'vi',
     });
     addTaskRow();
   } catch (e) {
-    alert('Dá»‹ch báº±ng GPT tháº¥t báº¡i: ' + e.message);
+    alert('Dịch bằng GPT thất bại: ' + e.message);
   } finally {
     btn.disabled = false;
     btn.innerHTML = oldText;
@@ -1933,33 +1986,33 @@ document.getElementById('btn-sub-trans-gpt')?.addEventListener('click', async ()
 document.getElementById('btn-sub-trans-gemini')?.addEventListener('click', async () => {
   const btn = document.getElementById('btn-sub-trans-gemini');
   const text = await getSubtitleText();
-  if (!text) { alert('ChÆ°a táº£i phá»¥ Ä‘á».'); return; }
+  if (!text) { alert('Chưa tải phụ đề.'); return; }
   btn.disabled = true;
   const oldText = btn.innerHTML;
-  btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Äang dá»‹ch...';
+  btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Đang dịch...';
   try {
     await apiPost('/subtitle/translate', {
       text, engine: 'gemini',
-      source_lang: document.getElementById('sel-lang-from')?.value === 'Tiáº¿ng Anh' ? 'en' : 'zh',
-      target_lang: document.getElementById('sel-lang-to')?.value === 'Tiáº¿ng Anh' ? 'en' : 'vi',
+      source_lang: document.getElementById('sel-lang-from')?.value === 'Tiếng Anh' ? 'en' : 'zh',
+      target_lang: document.getElementById('sel-lang-to')?.value === 'Tiếng Anh' ? 'en' : 'vi',
     });
     addTaskRow();
   } catch (e) {
-    alert('Dá»‹ch báº±ng Gemini tháº¥t báº¡i: ' + e.message);
+    alert('Dịch bằng Gemini thất bại: ' + e.message);
   } finally {
     btn.disabled = false;
     btn.innerHTML = oldText;
   }
 });
 
-/* â”€â”€â”€ Translation Result Modal â”€â”€â”€ */
+/* ─── Translation Result Modal ─── */
 const transResultModal = document.getElementById('trans-result-modal');
 const transResultText = document.getElementById('trans-result-text');
 const transResultInfo = document.getElementById('trans-result-info');
 
 function showTransResult(text, filename) {
   if (transResultText) transResultText.value = text;
-  if (transResultInfo) transResultInfo.textContent = `NLLB-200 â€” ${filename || 'subtitle.srt'} (${(text || '').split('\n').length} dÃ²ng)`;
+  if (transResultInfo) transResultInfo.textContent = `NLLB-200 — ${filename || 'subtitle.srt'} (${(text || '').split('\n').length} dòng)`;
   transResultModal?.classList.add('show');
 }
 
@@ -1968,7 +2021,7 @@ document.getElementById('btn-trans-copy')?.addEventListener('click', () => {
   navigator.clipboard.writeText(transResultText.value).then(() => {
     const btn = document.getElementById('btn-trans-copy');
     const orig = btn.innerHTML;
-    btn.innerHTML = '<i class="ri-check-line"></i> ÄÃ£ sao chÃ©p';
+    btn.innerHTML = '<i class="ri-check-line"></i> Đã sao chép';
     setTimeout(() => btn.innerHTML = orig, 1500);
   });
 });
@@ -1991,16 +2044,16 @@ document.getElementById('btn-sub-trans-nllb')?.addEventListener('click', async (
   const btn = document.getElementById('btn-sub-trans-nllb');
   const srtPath = document.getElementById('inp-srt-path')?.value?.trim();
   const text = await getSubtitleText();
-  if (!text) { alert('ChÆ°a cÃ³ file SRT. HÃ£y nháº­p Ä‘Æ°á»ng dáº«n file .srt vÃ o Ã´ Path Subtitle rá»“i thá»­ láº¡i.'); return; }
+  if (!text) { alert('Chưa có file SRT. Hãy nhập đường dẫn file .srt vào ô Path Subtitle rồi thử lại.'); return; }
 
   btn.disabled = true;
   const oldText = btn.innerHTML;
-  btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Äang khá»Ÿi Ä‘á»™ng...';
+  btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Đang khởi động...';
   const t0 = Date.now();
 
   const fromLang = document.getElementById('sel-lang-from')?.value;
   const toLang = document.getElementById('sel-lang-to')?.value;
-  const LANG_MAP = { 'Tiáº¿ng Anh': 'en', 'Tiáº¿ng Trung': 'zh', 'Tiáº¿ng Nháº­t': 'ja', 'Tiáº¿ng HÃ n': 'ko', 'Tiáº¿ng Viá»‡t': 'vi', 'Tiáº¿ng Nga': 'ru', 'Tiáº¿ng PhÃ¡p': 'fr', 'Tiáº¿ng Äá»©c': 'de' };
+  const LANG_MAP = { 'Tiếng Anh': 'en', 'Tiếng Trung': 'zh', 'Tiếng Nhật': 'ja', 'Tiếng Hàn': 'ko', 'Tiếng Việt': 'vi', 'Tiếng Nga': 'ru', 'Tiếng Pháp': 'fr', 'Tiếng Đức': 'de' };
   const srcCode = LANG_MAP[fromLang] || 'en';
   const dstCode = LANG_MAP[toLang] || 'vi';
   const srtName = srtPath ? srtPath.split(/[\/\\]/).pop() : 'subtitle.srt';
@@ -2020,7 +2073,7 @@ document.getElementById('btn-sub-trans-nllb')?.addEventListener('click', async (
     <div class="result-cell" style="width:50px">${rowId}</div>
     <div class="result-cell" style="width:100px;color:#facc15" id="elapsed-${rowId}">00:00</div>
     <div class="result-cell flex1" style="color:#8892a4">${fromLang || 'Anh'}</div>
-    <div class="result-cell flex1" style="color:#8892a4" id="subdich-${rowId}">â³ 0%</div>
+    <div class="result-cell flex1" style="color:#8892a4" id="subdich-${rowId}">⏳ 0%</div>
   `;
   resultBody.appendChild(row);
   resultBody.scrollTop = resultBody.scrollHeight;
@@ -2044,7 +2097,7 @@ document.getElementById('btn-sub-trans-nllb')?.addEventListener('click', async (
     });
 
     if (!startRes?.job_id) {
-      // Plain text â€” already done
+      // Plain text — already done
       const fill = document.getElementById(`mini-fill-${rowId}`);
       if (fill) fill.style.width = '100%';
       const sd = document.getElementById(`subdich-${rowId}`);
@@ -2057,7 +2110,7 @@ document.getElementById('btn-sub-trans-nllb')?.addEventListener('click', async (
 
     // Poll progress
     const jobId = startRes.job_id;
-    btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Äang dá»‹ch...';
+    btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Đang dịch...';
 
     await new Promise((resolve) => {
       const poll = setInterval(async () => {
@@ -2067,7 +2120,7 @@ document.getElementById('btn-sub-trans-nllb')?.addEventListener('click', async (
           const fill = document.getElementById(`mini-fill-${rowId}`);
           if (fill) fill.style.width = `${pct}%`;
           const sd = document.getElementById(`subdich-${rowId}`);
-          if (sd) sd.textContent = `â³ ${pct}%`;
+          if (sd) sd.textContent = `⏳ ${pct}%`;
           btn.innerHTML = `<i class="ri-loader-4-line ri-spin"></i> ${pct}%`;
 
           if (prog?.status === 'done') {
@@ -2079,18 +2132,18 @@ document.getElementById('btn-sub-trans-nllb')?.addEventListener('click', async (
               // Click to view full result
               sd.style.cursor = 'pointer';
               sd.style.color = '#60a5fa';
-              sd.title = 'Click Ä‘á»ƒ xem káº¿t quáº£ dá»‹ch Ä‘áº§y Ä‘á»§';
+              sd.title = 'Click để xem kết quả dịch đầy đủ';
               sd.onclick = () => showTransResult(translated, srtName);
             }
             if (fill) fill.style.width = '100%';
             // Check if result contains error placeholder
             if (/\[NLLB unavailable/i.test(translated) || /\[NLLB error/i.test(translated)) {
-              setTimeout(() => alert('NLLB khÃ´ng kháº£ dá»¥ng trong báº£n EXE.\nDÃ¹ng GPT hoáº·c Gemini, hoáº·c cháº¡y tá»« source.'), 100);
+              setTimeout(() => alert('NLLB không khả dụng trong bản EXE.\nDùng GPT hoặc Gemini, hoặc chạy từ source.'), 100);
             }
             resolve();
           } else if (prog?.status === 'error') {
             clearInterval(poll);
-            if (sd) sd.textContent = `âŒ ${prog.error}`;
+            if (sd) sd.textContent = `❌ ${prog.error}`;
             resolve();
           }
         } catch (_) { }
@@ -2098,7 +2151,7 @@ document.getElementById('btn-sub-trans-nllb')?.addEventListener('click', async (
     });
 
   } catch (e) {
-    alert('Dá»‹ch báº±ng NLLB tháº¥t báº¡i: ' + e.message);
+    alert('Dịch bằng NLLB thất bại: ' + e.message);
   } finally {
     clearInterval(timerInterval);
     btn.disabled = false;
@@ -2109,19 +2162,19 @@ document.getElementById('btn-sub-trans-nllb')?.addEventListener('click', async (
 document.getElementById('btn-sub-trans-marian')?.addEventListener('click', async () => {
   const btn = document.getElementById('btn-sub-trans-marian');
   const text = await getSubtitleText();
-  if (!text) { alert('ChÆ°a táº£i phá»¥ Ä‘á».'); return; }
+  if (!text) { alert('Chưa tải phụ đề.'); return; }
   btn.disabled = true;
   const oldText = btn.innerHTML;
-  btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Äang dá»‹ch...';
+  btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Đang dịch...';
   try {
     await apiPost('/subtitle/translate', {
       text, engine: 'marian',
-      source_lang: document.getElementById('sel-lang-from')?.value === 'Tiáº¿ng Anh' ? 'en' : 'zh',
-      target_lang: document.getElementById('sel-lang-to')?.value === 'Tiáº¿ng Anh' ? 'en' : 'vi',
+      source_lang: document.getElementById('sel-lang-from')?.value === 'Tiếng Anh' ? 'en' : 'zh',
+      target_lang: document.getElementById('sel-lang-to')?.value === 'Tiếng Anh' ? 'en' : 'vi',
     });
     addTaskRow();
   } catch (e) {
-    alert('Dá»‹ch báº±ng MarianMT tháº¥t báº¡i: ' + e.message);
+    alert('Dịch bằng MarianMT thất bại: ' + e.message);
   } finally {
     btn.disabled = false;
     btn.innerHTML = oldText;
@@ -2130,11 +2183,11 @@ document.getElementById('btn-sub-trans-marian')?.addEventListener('click', async
 
 document.getElementById('btn-sub-trans-batch')?.addEventListener('click', async () => {
   const text = await getSubtitleText();
-  if (!text) { alert('ChÆ°a táº£i phá»¥ Ä‘á».'); return; }
+  if (!text) { alert('Chưa tải phụ đề.'); return; }
   await apiPost('/subtitle/translate', {
     text, engine: 'gpt',
-    source_lang: document.getElementById('sel-lang-from')?.value === 'Tiáº¿ng Anh' ? 'en' : 'zh',
-    target_lang: document.getElementById('sel-lang-to')?.value === 'Tiáº¿ng Anh' ? 'en' : 'vi',
+    source_lang: document.getElementById('sel-lang-from')?.value === 'Tiếng Anh' ? 'en' : 'zh',
+    target_lang: document.getElementById('sel-lang-to')?.value === 'Tiếng Anh' ? 'en' : 'vi',
   });
   addTaskRow();
 });
@@ -2168,7 +2221,7 @@ document.getElementById('btn-sub-export-burn')?.addEventListener('click', async 
   if (r) addTaskRow();
 });
 
-/* â”€â”€â”€ Init: load dashboard & settings â”€â”€â”€ */
+/* ─── Init: load dashboard & settings ─── */
 loadDashboard();
 setTimeout(async () => {
   const settings = await apiGet('/settings');
@@ -2182,7 +2235,7 @@ setTimeout(async () => {
   }
 }, 200);
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• SETTINGS SAVE â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════ SETTINGS SAVE ═══════════════ */
 document.getElementById('btn-save-settings')?.addEventListener('click', async () => {
   const data = {
     openai_key: document.getElementById('inp-set-openai')?.value || '',
@@ -2194,12 +2247,12 @@ document.getElementById('btn-save-settings')?.addEventListener('click', async ()
   };
   const result = await apiPut('/settings', data);
   if (result) {
-    alert('ÄÃ£ lÆ°u cÃ i Ä‘áº·t!');
+    alert('Đã lưu cài đặt!');
     document.getElementById('settings-modal')?.classList.remove('show');
   }
 });
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• MODAL LOGIC â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════ MODAL LOGIC ═══════════════ */
 document.querySelectorAll('.close-modal').forEach(btn => {
   btn.addEventListener('click', (e) => {
     e.target.closest('.modal-overlay')?.classList.remove('show');
@@ -2273,28 +2326,39 @@ async function pollDownload(downloadId) {
 
 
 function loadVideoPreview() {
-  const path = document.getElementById('inp-video-path')?.value || document.getElementById('inp-srt-path')?.value;
+  const path = document.getElementById('inp-video-path')?.value?.trim() || '';
   const video = document.getElementById('video-player');
   const msg = document.getElementById('no-video-msg');
+  const canvas = document.getElementById('preview-canvas');
   if (!video || !msg) return;
-  if (path && (path.endsWith('.mp4') || path.endsWith('.mkv') || path.endsWith('.avi') || path.endsWith('.mov'))) {
+  const isVideo = /\.(mp4|mkv|avi|mov)$/i.test(path);
+
+  if (path && isVideo) {
     video.src = '/api/video/serve?path=' + encodeURIComponent(path);
     video.style.display = 'block';
     msg.style.display = 'none';
+    canvas?.classList.add('has-media');
+    canvas?.classList.remove('no-media');
     video.load();
   } else {
+    video.pause?.();
+    video.removeAttribute('src');
+    video.load();
     video.style.display = 'none';
     msg.style.display = 'flex';
+    canvas?.classList.add('no-media');
+    canvas?.classList.remove('has-media');
   }
 }
 
-/* â”€â”€â”€ Video preview from browse â”€â”€â”€ */
+/* ─── Video preview from browse ─── */
 document.getElementById('inp-video-path')?.addEventListener('change', loadVideoPreview);
 document.getElementById('inp-video-path')?.addEventListener('paste', () => setTimeout(loadVideoPreview, 100));
 document.getElementById('inp-srt-path')?.addEventListener('change', loadVideoPreview);
 document.getElementById('inp-srt-path')?.addEventListener('paste', () => setTimeout(loadVideoPreview, 100));
+loadVideoPreview();
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• SUBTITLE BOX OVERLAY â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════ SUBTITLE BOX OVERLAY ═══════════════ */
 
 // Default region as fraction of video size (0-1)
 const SUB_BOX_DEFAULTS = { x: 0.1, y: 0.78, width: 0.8, height: 0.15 };
@@ -2505,7 +2569,7 @@ function setSubBoxRegion(region) {
   if (subBoxVisible) subBoxSyncPosition();
 }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• PROMPT LIBRARY â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════ PROMPT LIBRARY ═══════════════ */
 document.querySelectorAll('.prompt-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     const prompt = btn.dataset.prompt;
@@ -2517,7 +2581,7 @@ document.querySelectorAll('.prompt-btn').forEach(btn => {
   });
 });
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• PUBLISH HANDLERS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════ PUBLISH HANDLERS ═══════════════ */
 let publishPlatform = '';
 
 document.getElementById('btn-publish-youtube')?.addEventListener('click', () => showPublishInputs('youtube'));
@@ -2549,7 +2613,7 @@ document.getElementById('btn-publish-confirm')?.addEventListener('click', async 
   }
 });
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• BATCH URL DOWNLOAD â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════ BATCH URL DOWNLOAD ═══════════════ */
 document.getElementById('btn-batch-download')?.addEventListener('click', async () => {
   const urlsInput = document.getElementById('inp-batch-urls')?.value;
   if (!urlsInput) return;
@@ -2566,7 +2630,7 @@ document.getElementById('btn-batch-download')?.addEventListener('click', async (
   }
 });
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• TEMPLATE HANDLERS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════ TEMPLATE HANDLERS ═══════════════ */
 
 function openTemplateModal() {
   const modal = document.getElementById('template-modal');
@@ -2579,19 +2643,19 @@ async function loadTemplateList() {
   if (!container) return;
   const templates = await apiGet('/templates');
   if (!templates || templates.length === 0) {
-    container.innerHTML = '<div class="log-placeholder">ChÆ°a cÃ³ template nÃ o.</div>';
-    document.getElementById('template-count') && (document.getElementById('template-count').textContent = '0 máº«u sáºµn');
+    container.innerHTML = '<div class="log-placeholder">Chưa có template nào.</div>';
+    document.getElementById('template-count') && (document.getElementById('template-count').textContent = '0 mẫu sẵn');
     return;
   }
   container.innerHTML = templates.map(t => `
     <div class="result-table-header" style="padding:2px 6px;font-size:9px;border-bottom:1px solid var(--border);cursor:default">
-      <span class="col-hdr" style="flex:2">${t.name || 'ChÆ°a Ä‘áº·t tÃªn'}</span>
+      <span class="col-hdr" style="flex:2">${t.name || 'Chưa đặt tên'}</span>
       <span class="col-hdr" style="flex:1">${t.preset || '-'}</span>
       <span class="col-hdr" style="width:60px">${t.resolution || '-'}</span>
       <span class="col-hdr" style="width:40px">${t.fps || '-'}</span>
       <span class="col-hdr" style="width:100px;display:flex;gap:4px">
-        <button class="action-btn tmpl-load" data-name="${t.name}" style="height:18px;padding:0 6px;font-size:8px">Táº£i</button>
-        <button class="action-btn tmpl-delete" data-name="${t.name}" style="height:18px;padding:0 6px;font-size:8px;background:#ef4444;color:#fff;border:none">XÃ³a</button>
+        <button class="action-btn tmpl-load" data-name="${t.name}" style="height:18px;padding:0 6px;font-size:8px">Tải</button>
+        <button class="action-btn tmpl-delete" data-name="${t.name}" style="height:18px;padding:0 6px;font-size:8px;background:#ef4444;color:#fff;border:none">Xóa</button>
       </span>
     </div>
   `).join('');
@@ -2626,7 +2690,7 @@ async function applyTemplateByName(name) {
 }
 
 document.getElementById('btn-save-template')?.addEventListener('click', async () => {
-  const name = document.getElementById('inp-template-name')?.value || prompt('TÃªn template:', 'Máº«u cá»§a tÃ´i');
+  const name = document.getElementById('inp-template-name')?.value || prompt('Tên template:', 'Mẫu của tôi');
   if (!name) return;
   const config = {
     name,
@@ -2657,7 +2721,7 @@ document.getElementById('template-modal')?.addEventListener('click', function (e
   if (e.target === this) this.classList.remove('show');
 });
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• PUBLISH HISTORY â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════ PUBLISH HISTORY ═══════════════ */
 document.getElementById('btn-publish-history')?.addEventListener('click', async () => {
   const modal = document.getElementById('publish-history-modal');
   if (modal) modal.classList.add('show');
@@ -2676,7 +2740,7 @@ async function loadPublishHistory() {
   if (!container) return;
   const items = await apiGet('/publish/history');
   if (!items || items.length === 0) {
-    container.innerHTML = '<div class="log-placeholder">ChÆ°a cÃ³ lá»‹ch sá»­ publish.</div>';
+    container.innerHTML = '<div class="log-placeholder">Chưa có lịch sử publish.</div>';
     if (countEl) countEl.textContent = '0 items';
     return;
   }
@@ -2691,13 +2755,13 @@ async function loadPublishHistory() {
   if (countEl) countEl.textContent = items.length + ' items';
 }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• DOWNLOAD HISTORY â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════ DOWNLOAD HISTORY ═══════════════ */
 async function loadDownloadHistory() {
   const container = document.getElementById('download-history-list');
   if (!container) return;
   const items = await apiGet('/download');
   if (!items || items.length === 0) {
-    container.innerHTML = '<div class="log-placeholder">ChÆ°a cÃ³ download nÃ o.</div>';
+    container.innerHTML = '<div class="log-placeholder">Chưa có download nào.</div>';
     return;
   }
   container.innerHTML = items.slice().reverse().map(item => `
@@ -2707,7 +2771,7 @@ async function loadDownloadHistory() {
       <span class="col-hdr" style="width:60px">${item.platform || '-'}</span>
       <span class="col-hdr" style="width:60px"><span class="queue-status-${item.status || 'unknown'}">${item.status || '?'}</span></span>
       <span class="col-hdr" style="width:50px">
-        ${item.status === 'running' || item.status === 'waiting' ? `<button class="action-btn dl-cancel" data-id="${item.id}" style="height:16px;padding:0 4px;font-size:7px;background:#ef4444;color:#fff;border:none">Há»§y</button>` : ''}
+        ${item.status === 'running' || item.status === 'waiting' ? `<button class="action-btn dl-cancel" data-id="${item.id}" style="height:16px;padding:0 4px;font-size:7px;background:#ef4444;color:#fff;border:none">Hủy</button>` : ''}
       </span>
     </div>
   `).join('');
@@ -2726,9 +2790,9 @@ document.querySelector('[data-tab="download"]')?.addEventListener('click', funct
   setTimeout(loadDownloadHistory, 300);
 });
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• MUSIC CROSSFADE / PLAYLIST â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════ MUSIC CROSSFADE / PLAYLIST ═══════════════ */
 document.getElementById('btn-music-crossfade')?.addEventListener('click', async () => {
-  const dur = prompt('Thá»i gian chá»“ng má» (giÃ¢y):', '2');
+  const dur = prompt('Thời gian chồng mờ (giây):', '2');
   if (dur === null) return;
   await apiPost('/edit/crop', {
     video_path: document.getElementById('inp-video-path')?.value || document.getElementById('inp-srt-path')?.value || '',
@@ -2739,11 +2803,11 @@ document.getElementById('btn-music-crossfade')?.addEventListener('click', async 
 
 document.getElementById('btn-music-playlist')?.addEventListener('click', async () => {
   const files = await apiGet('/music/files');
-  const musicDir = files ? files.map(f => `â€¢ ${f.name}`).join('\n') : '(empty)';
+  const musicDir = files ? files.map(f => `• ${f.name}`).join('\n') : '(empty)';
   alert(`Music Library:\n${musicDir}\n\nUse Music Folder to see all files.`);
 });
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• KEEP BGM TOGGLE â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════ KEEP BGM TOGGLE ═══════════════ */
 document.getElementById('chk-keep-bgm')?.addEventListener('change', function () {
   const vol = document.getElementById('inp-bgm-vol');
   if (vol) {
@@ -2760,7 +2824,7 @@ document.getElementById('inp-bgm-vol') && (() => {
   }
 })();
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• AUTO VOICE TOGGLE â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════ AUTO VOICE TOGGLE ═══════════════ */
 document.getElementById('chk-auto-voice')?.addEventListener('change', function () {
   const inputs = ['sel-tts-provider', 'sel-voice-lang', 'sel-voice-type', 'btn-play-voice', 'sel-voice-mode', 'chk-keep-bgm', 'inp-bgm-vol'];
   inputs.forEach(id => {
@@ -2772,7 +2836,7 @@ document.getElementById('chk-auto-voice')?.addEventListener('change', function (
   });
 });
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• SPEED RAMP / MOTION EFFECTS HANDLERS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════ SPEED RAMP / MOTION EFFECTS HANDLERS ═══════════════ */
 document.querySelectorAll('#tab-enhance .custom-checkbox input').forEach(chk => {
   chk.addEventListener('change', function () {
     const label = this.closest('.feature-item')?.querySelector('.field-label')?.textContent?.toLowerCase().trim();
@@ -2782,7 +2846,7 @@ document.querySelectorAll('#tab-enhance .custom-checkbox input').forEach(chk => 
   });
 });
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• TIMELINE INTERACTIVE â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════ TIMELINE INTERACTIVE ═══════════════ */
 function makeTimelineInteractive() {
   document.querySelectorAll('.track-clip').forEach(clip => {
     clip.setAttribute('draggable', 'true');
@@ -2817,9 +2881,9 @@ function makeTimelineInteractive() {
   });
 }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• VERSION HISTORY â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════ VERSION HISTORY ═══════════════ */
 document.getElementById('btn-version-history')?.addEventListener('click', async () => {
-  if (!currentProjectId) { alert('Vui lÃ²ng táº£i má»™t dá»± Ã¡n trÆ°á»›c.'); return; }
+  if (!currentProjectId) { alert('Vui lòng tải một dự án trước.'); return; }
   const versions = await apiGet(`/projects/${currentProjectId}/versions`);
   const modal = document.getElementById('version-modal');
   const list = document.getElementById('version-list');
@@ -2830,21 +2894,21 @@ document.getElementById('btn-version-history')?.addEventListener('click', async 
       const row = document.createElement('div');
       row.className = 'result-row';
       row.innerHTML = `<span style="flex:1">v${v.version}</span><span style="flex:1">${new Date(v.saved_at * 1000).toLocaleString()}</span><span>${(v.size / 1024).toFixed(1)}KB</span>
-        <button class="action-btn" style="height:18px;padding:1px 6px;font-size:9px" data-version="${v.file}">KhÃ´i phá»¥c</button>`;
+        <button class="action-btn" style="height:18px;padding:1px 6px;font-size:9px" data-version="${v.file}">Khôi phục</button>`;
       row.querySelector('.action-btn').addEventListener('click', async () => {
         await apiPost(`/projects/${currentProjectId}/restore?version_file=${encodeURIComponent(v.file)}`);
-        alert(`ÄÃ£ khÃ´i phá»¥c vá» phiÃªn báº£n v${v.version}`);
+        alert(`Đã khôi phục về phiên bản v${v.version}`);
         modal.classList.remove('show');
       });
       list.appendChild(row);
     });
   } else {
-    list.innerHTML = '<div style="color:var(--text-dim);padding:8px;text-align:center">ChÆ°a cÃ³ phiÃªn báº£n nÃ o Ä‘Æ°á»£c lÆ°u. HÃ£y lÆ°u dá»± Ã¡n Ä‘á»ƒ táº¡o phiÃªn báº£n.</div>';
+    list.innerHTML = '<div style="color:var(--text-dim);padding:8px;text-align:center">Chưa có phiên bản nào được lưu. Hãy lưu dự án để tạo phiên bản.</div>';
   }
   modal.classList.add('show');
 });
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• LINK HANDLERS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════ LINK HANDLERS ═══════════════ */
 document.getElementById('link-search-sample')?.addEventListener('click', (e) => {
   e.preventDefault();
   const preset = document.getElementById('sel-project-preset')?.value || 'Movie Review';
@@ -2865,7 +2929,7 @@ document.getElementById('link-setup-voice')?.addEventListener('click', (e) => {
   document.querySelector('#processing-tabs .tab[data-target="tab-voice"]')?.click();
 });
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• INFO BUTTONS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════ INFO BUTTONS ═══════════════ */
 document.querySelectorAll('.info-btn').forEach(btn => {
   if (btn.id === 'btn-info-srt') {
     btn.addEventListener('click', () => {
@@ -2873,36 +2937,36 @@ document.querySelectorAll('.info-btn').forEach(btn => {
     });
   } else if (btn.id === 'btn-help-execute') {
     btn.addEventListener('click', () => {
-      alert('THá»°C HIá»†N sáº½ cháº¡y toÃ n bá»™ pipeline:\n1. Táº£i video (náº¿u cÃ³ URL)\n2. Chuyá»ƒn giá»ng nÃ³i (STT)\n3. Dá»‹ch subtitle\n4. Táº¡o giá»ng Ä‘á»c (TTS)\n5. Render video cuá»‘i cÃ¹ng');
+      alert('Render sẽ chạy toàn bộ pipeline:\n1. Tải video (nếu có URL)\n2. Chuyển giọng nói (STT)\n3. Dịch subtitle\n4. Tạo giọng đọc (TTS)\n5. Render video cuối cùng');
     });
   } else if (!btn.id) {
     btn.addEventListener('click', () => {
       const parentLabel = btn.closest('.tab-row')?.querySelector('.field-label')?.textContent || '';
-      alert(`ThÃªm thÃ´ng tin vá»: ${parentLabel || 'tÃ­nh nÄƒng nÃ y'}`);
+      alert(`Thêm thông tin về: ${parentLabel || 'tính năng này'}`);
     });
   }
 });
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• VOICE PLAY BUTTON â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════ VOICE PLAY BUTTON ═══════════════ */
 document.getElementById('btn-play-voice')?.addEventListener('click', async () => {
-  const text = 'Xin chÃ o, Ä‘Ã¢y lÃ  giá»ng Ä‘á»c thá»­ nghiá»‡m';
+  const text = 'Xin chào, đây là giọng đọc thử nghiệm';
   const provider = document.getElementById('sel-tts-provider')?.value === 'FPT.AI TTS' ? 'fpt' : (document.getElementById('sel-tts-provider')?.value?.toLowerCase().replace(' tts', '').replace(' (free)', '') || 'edge');
   const voice = document.getElementById('sel-voice-type')?.value || 'vi-VN-HoaiMyNeural';
   const fptKey = document.getElementById('inp-fpt-key')?.value || '';
   const audio = new Audio(`/api/voice/play?text=${encodeURIComponent(text)}&provider=${provider}&voice=${voice}&fpt_api_key=${encodeURIComponent(fptKey)}`);
-  audio.play().catch(() => alert('Nghe thá»­ giá»ng nÃ³i: ' + text));
+  audio.play().catch(() => alert('Nghe thử giọng nói: ' + text));
 });
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• TRANSLATE SETTINGS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════ TRANSLATE SETTINGS ═══════════════ */
 document.getElementById('btn-translate-settings')?.addEventListener('click', () => {
   alert('Translation settings:\n- GPT: requires OPENAI_API_KEY\n- Gemini: requires GEMINI_API_KEY\n- NLLB-200: runs locally (requires transformers)\n- MarianMT: runs locally (lightweight)\nConfigure API keys in Settings modal.');
 });
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• ENHANCE BRANDING BUTTONS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════ ENHANCE BRANDING BUTTONS ═══════════════ */
 document.getElementById('btn-branding-logo')?.addEventListener('click', async () => {
   const videoPath = document.getElementById('inp-video-path')?.value || document.getElementById('inp-srt-path')?.value || '';
-  if (!videoPath) { alert('ChÆ°a chá»n video'); return; }
-  const logoPath = prompt('ÄÆ°á»ng dáº«n hÃ¬nh áº£nh logo:', '');
+  if (!videoPath) { alert('Chưa chọn video'); return; }
+  const logoPath = prompt('Đường dẫn hình ảnh logo:', '');
   if (!logoPath) return;
   await apiPost('/enhance/branding/logo', { video_path: videoPath, logo_path: logoPath, position: 'bottom_right', opacity: 0.7 });
   addTaskRow();
@@ -2910,8 +2974,8 @@ document.getElementById('btn-branding-logo')?.addEventListener('click', async ()
 
 document.getElementById('btn-branding-text')?.addEventListener('click', async () => {
   const videoPath = document.getElementById('inp-video-path')?.value || document.getElementById('inp-srt-path')?.value || '';
-  if (!videoPath) { alert('ChÆ°a chá»n video'); return; }
-  const text = prompt('VÄƒn báº£n chÃ¨n:', '0xForge');
+  if (!videoPath) { alert('Chưa chọn video'); return; }
+  const text = prompt('Văn bản chèn:', '0xForge');
   if (!text) return;
   await apiPost('/enhance/branding/text', { video_path: videoPath, text, position: 'bottom', font_size: 48 });
   addTaskRow();
@@ -2919,18 +2983,18 @@ document.getElementById('btn-branding-text')?.addEventListener('click', async ()
 
 document.getElementById('btn-branding-qr')?.addEventListener('click', async () => {
   const videoPath = document.getElementById('inp-video-path')?.value || document.getElementById('inp-srt-path')?.value || '';
-  if (!videoPath) { alert('ChÆ°a chá»n video'); return; }
-  const content = prompt('Ná»™i dung QR (URL):', 'https://example.com');
+  if (!videoPath) { alert('Chưa chọn video'); return; }
+  const content = prompt('Nội dung QR (URL):', 'https://example.com');
   if (!content) return;
   await apiPost('/enhance/branding/qr', { video_path: videoPath, content, position: 'bottom_right', size: 120 });
   addTaskRow();
 });
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• EXTRACT SUBTITLE FROM VIDEO â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════ EXTRACT SUBTITLE FROM VIDEO ═══════════════ */
 document.getElementById('btn-extract-srt')?.addEventListener('click', async () => {
   const videoPath = document.getElementById('inp-video-path')?.value;
   if (!videoPath) {
-    alert('Vui lÃ²ng chá»n file video á»Ÿ má»¥c Path Video trÆ°á»›c!');
+    alert('Vui lòng chọn file video ở mục Path Video trước!');
     return;
   }
 
@@ -2941,7 +3005,7 @@ document.getElementById('btn-extract-srt')?.addEventListener('click', async () =
   const streamsSection = document.getElementById('sub-streams-section');
   const streamsList = document.getElementById('sub-streams-list');
   streamsSection.style.display = 'none';
-  streamsList.innerHTML = '<div style="color:#718096; text-align:center; padding:10px;">Äang quÃ©t phá»¥ Ä‘á» trong video...</div>';
+  streamsList.innerHTML = '<div style="color:#718096; text-align:center; padding:10px;">Đang quét phụ đề trong video...</div>';
 
   try {
     const res = await apiPost('/subtitle/detect-streams', { path: videoPath });
@@ -2970,10 +3034,10 @@ document.getElementById('btn-extract-srt')?.addEventListener('click', async () =
       });
       streamsSection.style.display = 'block';
     } else {
-      streamsList.innerHTML = '<div style="color:#e53e3e; text-align:center; padding:10px;">KhÃ´ng tÃ¬m tháº¥y phá»¥ Ä‘á» má»m nÃ o tÃ­ch há»£p sáºµn. HÃ£y sá»­ dá»¥ng Whisper STT á»Ÿ dÆ°á»›i.</div>';
+      streamsList.innerHTML = '<div style="color:#e53e3e; text-align:center; padding:10px;">Không tìm thấy phụ đề mềm nào tích hợp sẵn. Hãy sử dụng Whisper STT ở dưới.</div>';
     }
   } catch (err) {
-    streamsList.innerHTML = '<div style="color:#e53e3e; text-align:center; padding:10px;">Lá»—i khi quÃ©t phá»¥ Ä‘á».</div>';
+    streamsList.innerHTML = '<div style="color:#e53e3e; text-align:center; padding:10px;">Lỗi khi quét phụ đề.</div>';
   }
 });
 
@@ -2981,14 +3045,14 @@ document.getElementById('btn-extract-selected-stream')?.addEventListener('click'
   const videoPath = document.getElementById('inp-video-path')?.value;
   const selectedRadio = document.querySelector('input[name="srt-stream-choice"]:checked');
   if (!selectedRadio) {
-    alert('Vui lÃ²ng chá»n má»™t track phá»¥ Ä‘á» Ä‘á»ƒ trÃ­ch xuáº¥t!');
+    alert('Vui lòng chọn một track phụ đề để trích xuất!');
     return;
   }
 
   const index = parseInt(selectedRadio.value);
   const extractBtn = document.getElementById('btn-extract-selected-stream');
   const originalText = extractBtn.textContent;
-  extractBtn.textContent = 'Äang trÃ­ch xuáº¥t...';
+  extractBtn.textContent = 'Đang trích xuất...';
   extractBtn.disabled = true;
 
   try {
@@ -3000,14 +3064,14 @@ document.getElementById('btn-extract-selected-stream')?.addEventListener('click'
     if (res && res.path) {
       document.getElementById('inp-srt-path').value = res.path;
       document.getElementById('extract-sub-modal').classList.remove('show');
-      alert('ÄÃ£ trÃ­ch xuáº¥t phá»¥ Ä‘á» thÃ nh cÃ´ng! Click OK Ä‘á»ƒ tá»± Ä‘á»™ng náº¡p phá»¥ Ä‘á».');
+      alert('Đã trích xuất phụ đề thành công! Click OK để tự động nạp phụ đề.');
       // Auto trigger load
       document.getElementById('btn-load')?.click();
     } else {
-      alert('KhÃ´ng thá»ƒ trÃ­ch xuáº¥t phá»¥ Ä‘á».');
+      alert('Không thể trích xuất phụ đề.');
     }
   } catch (err) {
-    alert('CÃ³ lá»—i xáº£y ra: ' + (err.message || err));
+    alert('Có lỗi xảy ra: ' + (err.message || err));
   } finally {
     extractBtn.textContent = originalText;
     extractBtn.disabled = false;
@@ -3017,16 +3081,16 @@ document.getElementById('btn-extract-selected-stream')?.addEventListener('click'
 document.getElementById('btn-run-whisper-stt')?.addEventListener('click', async () => {
   const videoPath = document.getElementById('inp-video-path')?.value;
   if (!videoPath) {
-    alert('Vui lÃ²ng chá»n video trÆ°á»›c!');
+    alert('Vui lòng chọn video trước!');
     return;
   }
 
   const language = document.getElementById('sel-stt-lang')?.value || 'vi';
-  const vocalSep = document.getElementById('chk-vocal-sep')?.checked ?? true;
+  const vocalSep = document.getElementById('chk-vocal-sep')?.checked ?? false;
   const useWhisperX = document.getElementById('chk-modal-whisperx')?.checked ?? true;
   const runBtn = document.getElementById('btn-run-whisper-stt');
   const originalText = runBtn.textContent;
-  runBtn.textContent = 'Äang kÃ­ch hoáº¡t Whisper...';
+  runBtn.textContent = 'Đang kích hoạt Whisper...';
   runBtn.disabled = true;
 
   try {
@@ -3039,7 +3103,7 @@ document.getElementById('btn-run-whisper-stt')?.addEventListener('click', async 
     });
     if (res) {
       document.getElementById('extract-sub-modal').classList.remove('show');
-      alert('ÄÃ£ khá»Ÿi cháº¡y tiáº¿n trÃ¬nh Whisper STT cháº¡y ngáº§m thÃ nh cÃ´ng!\nBáº¡n cÃ³ thá»ƒ má»Ÿ Tab Phá»¥ Äá» / nháº¥n Xem Log Ä‘á»ƒ theo dÃµi tiáº¿n trÃ¬nh.');
+      alert('Đã khởi chạy tiến trình Whisper STT chạy ngầm thành công!\nBạn có thể mở Tab Phụ Đề / nhấn Xem Log để theo dõi tiến trình.');
 
       // Periodically check subtitles list to auto-load when done
       const checkInterval = setInterval(async () => {
@@ -3048,7 +3112,7 @@ document.getElementById('btn-run-whisper-stt')?.addEventListener('click', async 
           const whisperSub = subs.find(s => s.source === `whisper_${language}` || s.source === `whisper_${language}_aligned`);
           if (whisperSub) {
             clearInterval(checkInterval);
-            alert('Nháº­n dáº¡ng giá»ng nÃ³i (Whisper STT) Ä‘Ã£ hoÃ n thÃ nh! Äang náº¡p láº¡i phá»¥ Ä‘á»...');
+            alert('Nhận dạng giọng nói (Whisper STT) đã hoàn thành! Đang nạp lại phụ đề...');
             // Put it into the input path and click load
             document.getElementById('inp-srt-path').value = `data/subtitles/project_${currentProjectId || 1}_stt.srt`;
             document.getElementById('btn-load')?.click();
@@ -3059,20 +3123,20 @@ document.getElementById('btn-run-whisper-stt')?.addEventListener('click', async 
       }, 5000);
     }
   } catch (err) {
-    alert('Lá»—i kÃ­ch hoáº¡t Whisper: ' + (err.message || err));
+    alert('Lỗi kích hoạt Whisper: ' + (err.message || err));
   } finally {
     runBtn.textContent = originalText;
     runBtn.disabled = false;
   }
 });
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• EDIT TAB - CROP/RESIZE CHECKBOXES â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════ EDIT TAB - CROP/RESIZE CHECKBOXES ═══════════════ */
 document.getElementById('chk-edit-crop')?.addEventListener('change', function () {
   if (this.checked) {
-    const x = prompt('Tá»a Ä‘á»™ X cáº¯t:', '0'); if (x === null) { this.checked = false; return; }
-    const y = prompt('Tá»a Ä‘á»™ Y cáº¯t:', '0'); if (y === null) { this.checked = false; return; }
-    const w = prompt('Chiá»u rá»™ng cáº¯t:', '1920'); if (w === null) { this.checked = false; return; }
-    const h = prompt('Chiá»u cao cáº¯t:', '1080'); if (h === null) { this.checked = false; return; }
+    const x = prompt('Tọa độ X cắt:', '0'); if (x === null) { this.checked = false; return; }
+    const y = prompt('Tọa độ Y cắt:', '0'); if (y === null) { this.checked = false; return; }
+    const w = prompt('Chiều rộng cắt:', '1920'); if (w === null) { this.checked = false; return; }
+    const h = prompt('Chiều cao cắt:', '1080'); if (h === null) { this.checked = false; return; }
     apiPost('/edit/crop', {
       video_path: document.getElementById('inp-video-path')?.value || document.getElementById('inp-srt-path')?.value || '',
       operations: [{ type: 'crop', x: parseInt(x), y: parseInt(y), w: parseInt(w), h: parseInt(h) }],
@@ -3092,8 +3156,8 @@ document.getElementById('chk-edit-scene-detect')?.addEventListener('change', fun
 
 document.getElementById('chk-edit-resize')?.addEventListener('change', function () {
   if (this.checked) {
-    const w = prompt('Chiá»u rá»™ng:', '1280'); if (w === null) { this.checked = false; return; }
-    const h = prompt('Chiá»u cao:', '720'); if (h === null) { this.checked = false; return; }
+    const w = prompt('Chiều rộng:', '1280'); if (w === null) { this.checked = false; return; }
+    const h = prompt('Chiều cao:', '720'); if (h === null) { this.checked = false; return; }
     apiPost('/edit/resize', {
       video_path: document.getElementById('inp-video-path')?.value || document.getElementById('inp-srt-path')?.value || '',
       operations: [{ type: 'resize', width: parseInt(w), height: parseInt(h) }],
@@ -3101,7 +3165,7 @@ document.getElementById('chk-edit-resize')?.addEventListener('change', function 
   }
 });
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• SCENE LIST DYNAMIC â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════ SCENE LIST DYNAMIC ═══════════════ */
 async function updateSceneList() {
   if (!currentProjectId) return;
   const scenes = await apiGet(`/edit/scenes/${currentProjectId}`);
@@ -3128,36 +3192,36 @@ document.getElementById('btn-detect-scenes')?.addEventListener('click', async ()
   setTimeout(updateSceneList, 2000);
 });
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• ASSET TEMPLATES BUTTON â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════ ASSET TEMPLATES BUTTON ═══════════════ */
 document.querySelector('.asset-item:last-child')?.addEventListener('click', () => {
   openTemplateModal();
 });
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• CLOSE MODALS ON OVERLAY CLICK â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════ CLOSE MODALS ON OVERLAY CLICK ═══════════════ */
 document.querySelectorAll('.modal-overlay').forEach(overlay => {
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay) overlay.classList.remove('show');
   });
 });
 
-/* â”€â”€â”€ Wire timeline after load â”€â”€â”€ */
+/* ─── Wire timeline after load ─── */
 const origLoadTimeline = loadTimeline;
 loadTimeline = async function (projectId) {
   await origLoadTimeline(projectId);
   setTimeout(makeTimelineInteractive, 100);
 };
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• TIMELINE EDITOR BUTTON â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════ TIMELINE EDITOR BUTTON ═══════════════ */
 document.getElementById('btn-edit-timeline')?.addEventListener('click', () => {
   if (currentProjectId) {
     loadTimeline(currentProjectId);
-    alert('DÃ²ng thá»i gian Ä‘Ã£ táº£i tá»« dá»¯ liá»‡u dá»± Ã¡n.');
+    alert('Dòng thời gian đã tải từ dữ liệu dự án.');
   } else {
-    alert('Vui lÃ²ng táº£i má»™t dá»± Ã¡n trÆ°á»›c.');
+    alert('Vui lòng tải một dự án trước.');
   }
 });
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• GPU AUTO DETECT â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════ GPU AUTO DETECT ═══════════════ */
 async function detectGPU() {
   const info = await apiGet('/system/gpu');
   if (info) {
@@ -3177,13 +3241,14 @@ async function detectGPU() {
 }
 setTimeout(detectGPU, 500);
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• INTEGRATION LAYER (AUTO-WIRED) â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════ INTEGRATION LAYER (AUTO-WIRED) ═══════════════ */
 function bindApiAction(btnId, endpoint, payloadFn, resultElId, resultKey) {
   const btn = document.getElementById(btnId);
   if (!btn) return;
+  if (btnId && btnId.startsWith('btn-ai-')) return;
   btn.addEventListener('click', async () => {
     const originalText = btn.innerHTML;
-    btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Äang xá»­ lÃ½...';
+    btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Đang xử lý...';
     btn.disabled = true;
     try {
       const payload = payloadFn ? payloadFn() : {};
@@ -3208,7 +3273,7 @@ function bindApiAction(btnId, endpoint, payloadFn, resultElId, resultKey) {
   });
 }
 
-// â”€â”€ AI Tab â”€â”€
+// ── AI Tab ──
 bindApiAction('btn-ai-summary', '/ai/summary', () => ({
   text: document.getElementById('inp-ai-summary')?.value || 'Demo text',
   max_length: 150,
@@ -3230,33 +3295,26 @@ bindApiAction('btn-ai-speakers', '/ai/speakers', () => ({
   video_path: document.getElementById('inp-video-path')?.value || document.getElementById('inp-srt-path')?.value || 'demo.mp4'
 }), 'ai-speakers-result', 'speakers');
 
-// â”€â”€ Subtitle Tab â”€â”€
+// ── Subtitle Tab ──
 ['btn-sub-trans-gpt', 'btn-sub-trans-gemini', 'btn-sub-trans-nllb', 'btn-sub-trans-marian'].forEach(id => {
   const btn = document.getElementById(id);
   if (btn) {
     btn.addEventListener('click', () => {
       const originalText = btn.innerHTML;
-      btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Äang xá»­ lÃ½...';
+      btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Đang xử lý...';
       setTimeout(() => {
         btn.innerHTML = originalText;
-        alert('ÄÃ£ Ä‘Æ°a tiáº¿n trÃ¬nh dá»‹ch thuáº­t ' + id.replace('btn-sub-trans-', '').toUpperCase() + ' vÃ o hÃ ng Ä‘á»£i!');
+        alert('Đã đưa tiến trình dịch thuật ' + id.replace('btn-sub-trans-', '').toUpperCase() + ' vào hàng đợi!');
       }, 1000);
     });
   }
 });
 
-// â”€â”€ Export Tab â”€â”€
-const btnQueue = document.getElementById('btn-export-queue');
-if (btnQueue) {
-  btnQueue.addEventListener('click', () => {
-    addTaskRow();
-  });
-}
-
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• INIT QUEUE TABLE â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   Render rows vÃ o báº£ng káº¿t quáº£ tá»« queue jobs.
-   Æ¯u tiÃªn: API /queue â†’ fallback: .queue-job trong HTML
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+// ── Export Tab ──
+/* ═══════════════ INIT QUEUE TABLE ═══════════════
+   Render rows vào bảng kết quả từ queue jobs.
+   Ưu tiên: API /queue → fallback: .queue-job trong HTML
+════════════════════════════════════════════════ */
 const STATUS_COLOR = {
   running: '#a78bfa',
   completed: '#22c55e',
@@ -3277,8 +3335,9 @@ function statusBadge(status) {
 function updateQueueListUI(jobs) {
   const queueList = document.querySelector('.queue-list');
   if (!queueList) return;
+  updateWorkspaceStats(jobs || []);
   if (!jobs || jobs.length === 0) {
-    queueList.innerHTML = '<div style="color:#718096; padding:4px 8px; font-size:11px; font-style:italic">Hang doi trong</div>';
+    queueList.innerHTML = '<div class="queue-empty">Hàng đợi trống</div>';
     return;
   }
   queueList.innerHTML = jobs.map(item => {
@@ -3292,6 +3351,38 @@ function updateQueueListUI(jobs) {
       </div>
     `;
   }).join('');
+}
+
+function updateWorkspaceStats(jobs) {
+  const counts = (jobs || []).reduce((acc, job) => {
+    const status = job.status || 'pending';
+    acc.total += 1;
+    acc[status] = (acc[status] || 0) + 1;
+    return acc;
+  }, { total: 0 });
+
+  const running = counts.running || 0;
+  const completed = (counts.completed || 0) + (counts.done || 0);
+  const failed = (counts.failed || 0) + (counts.error || 0);
+  const setText = (id, value) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = String(value);
+  };
+
+  setText('ws-queue-count', counts.total || 0);
+  setText('ws-running-count', running);
+  setText('ws-failed-count', failed);
+  setText('queue-running-total', running);
+  setText('queue-completed-total', completed);
+  setText('queue-failed-total', failed);
+
+  const health = document.getElementById('queue-health-text');
+  if (health) {
+    if (running) health.textContent = `${running} task đang chạy`;
+    else if (failed) health.textContent = `${failed} task cần xử lý`;
+    else if (completed) health.textContent = `${completed} task đã hoàn tất`;
+    else health.textContent = 'Chưa có task đang chạy';
+  }
 }
 
 window.showJobLogs = function (jobId) {
@@ -3420,13 +3511,13 @@ function updateVoiceDropdown() {
   const provider = providerSel?.value;
   if (provider === 'FPT.AI TTS') {
     const fptVoices = [
-      { value: 'banmai', text: 'Ban Mai (Ná»¯ miá»n Báº¯c)' },
-      { value: 'lannhi', text: 'Lan Nhi (Ná»¯ miá»n Nam)' },
-      { value: 'leminh', text: 'LÃª Minh (Nam miá»n Báº¯c)' },
-      { value: 'myan', text: 'Má»¹ An (Ná»¯ miá»n Trung)' },
-      { value: 'thuminh', text: 'Thu Minh (Ná»¯ miá»n Báº¯c)' },
-      { value: 'giahuy', text: 'Gia Huy (Nam miá»n Trung)' },
-      { value: 'linhsan', text: 'Linh San (Ná»¯ miá»n Nam)' }
+      { value: 'banmai', text: 'Ban Mai (Nữ miền Bắc)' },
+      { value: 'lannhi', text: 'Lan Nhi (Nữ miền Nam)' },
+      { value: 'leminh', text: 'Lê Minh (Nam miền Bắc)' },
+      { value: 'myan', text: 'Mỹ An (Nữ miền Trung)' },
+      { value: 'thuminh', text: 'Thu Minh (Nữ miền Bắc)' },
+      { value: 'giahuy', text: 'Gia Huy (Nam miền Trung)' },
+      { value: 'linhsan', text: 'Linh San (Nữ miền Nam)' }
     ];
     typeSel.innerHTML = '';
     fptVoices.forEach(v => {
@@ -3444,9 +3535,9 @@ function updateVoiceDropdown() {
   typeSel.innerHTML = '';
 
   let filtered = allEdgeVoices;
-  if (selectedLang === 'Tiáº¿ng Viá»‡t') {
+  if (selectedLang === 'Tiếng Việt') {
     filtered = allEdgeVoices.filter(v => v.locale.startsWith('vi'));
-  } else if (selectedLang === 'Tiáº¿ng Anh') {
+  } else if (selectedLang === 'Tiếng Anh') {
     filtered = allEdgeVoices.filter(v => v.locale.startsWith('en'));
   }
 
@@ -3824,3 +3915,183 @@ document.querySelectorAll('.nav-item').forEach(item => {
     }
   }, true);
 });
+
+function activateWorkspaceView(action) {
+  document.querySelectorAll('.workspace-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.workspaceAction === action);
+  });
+}
+
+function switchWorkspaceTab(tabId) {
+  const tabBtn = document.querySelector(`#processing-tabs .tab[data-target="${tabId}"]`);
+  if (tabBtn) {
+    if (window._switchTab) window._switchTab(tabBtn);
+    else tabBtn.click();
+  }
+  document.getElementById('processing-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function handleWorkspaceAction(action) {
+  if (!action) return;
+  if (action === 'home') {
+    activateWorkspaceView('home');
+    document.getElementById('top-panels-row')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } else if (action === 'preview') {
+    activateWorkspaceView('preview');
+    document.getElementById('video-preview')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } else if (action === 'queue') {
+    activateWorkspaceView('queue');
+    document.getElementById('task-queue-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } else if (action === 'load') {
+    document.getElementById('btn-browse-video')?.click();
+  } else if (action === 'subtitle') {
+    switchWorkspaceTab('tab-subtitle');
+  } else if (action === 'voice') {
+    switchWorkspaceTab('tab-voice');
+  } else if (action === 'execute') {
+    document.getElementById('btn-execute')?.click();
+  } else if (action === 'settings') {
+    document.getElementById('settings-modal')?.classList.add('show');
+  } else if (action === 'logs') {
+    document.getElementById('btn-log-queue')?.click();
+  } else if (action === 'timeline-snap') {
+    document.querySelector('[data-workspace-action="timeline-snap"]')?.classList.toggle('active');
+    showToast('Snap timeline da doi trang thai', 'info');
+  } else if (action === 'timeline-zoom-in' || action === 'timeline-zoom-out') {
+    const timeline = document.getElementById('scene-timeline');
+    if (timeline) {
+      const current = Number(timeline.dataset.zoom || 1);
+      const next = action === 'timeline-zoom-in' ? Math.min(1.5, current + 0.1) : Math.max(0.8, current - 0.1);
+      timeline.dataset.zoom = next.toFixed(1);
+      timeline.style.setProperty('--timeline-zoom', next.toFixed(1));
+      timeline.style.setProperty('--timeline-width', `${Math.round(next * 100)}%`);
+    }
+  }
+}
+
+document.querySelectorAll('[data-workspace-action]').forEach(btn => {
+  btn.addEventListener('click', (event) => {
+    const action = event.currentTarget.dataset.workspaceAction;
+    if (action && !action.startsWith('timeline-')) event.preventDefault();
+    handleWorkspaceAction(action);
+  });
+});
+
+function updateWorkspaceMetadata() {
+  const videoPath = document.getElementById('inp-video-path')?.value || '';
+  const outputPath = document.getElementById('inp-output-path')?.value || '';
+  const preset = document.getElementById('sel-project-preset')?.value || 'Movie Review';
+  const fps = document.getElementById('inp-fps')?.value || '30';
+  const provider = document.getElementById('sel-tts-provider')?.value || 'Edge TTS';
+  const subtitleEnabled = document.getElementById('chk-translate')?.checked;
+  const videoName = videoPath ? videoPath.split(/[\\/]/).pop() : 'Chưa chọn video';
+
+  const setText = (id, value) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+  };
+
+  setText('workspace-project-name', preset);
+  setText('workspace-video-state', videoName);
+  setText('preview-file-name', videoPath ? videoName : 'No media loaded');
+  setText('preview-render-profile', outputPath ? outputPath.split(/[\\/]/).pop() : 'MP4 H264');
+  setText('preview-fps', fps);
+  setText('preview-sub-state', subtitleEnabled ? 'Auto' : 'Off');
+  setText('preview-voice-state', provider.replace(' TTS', '').replace(' (free)', ''));
+}
+
+['inp-video-path', 'inp-output-path', 'sel-project-preset', 'sel-tts-provider', 'chk-translate'].forEach(id => {
+  document.getElementById(id)?.addEventListener('change', updateWorkspaceMetadata);
+  document.getElementById(id)?.addEventListener('input', updateWorkspaceMetadata);
+});
+
+document.getElementById('asset-filter')?.addEventListener('input', (event) => {
+  const query = event.target.value.trim().toLowerCase();
+  document.querySelectorAll('#asset-library .asset-item').forEach(item => {
+    item.style.display = item.textContent.toLowerCase().includes(query) ? '' : 'none';
+  });
+});
+
+const commandActions = [
+  { id: 'load', icon: 'ri-folder-video-line', title: 'Load media', hint: 'Chọn video nguồn', key: 'L' },
+  { id: 'subtitle', icon: 'ri-closed-captioning-line', title: 'Subtitle tools', hint: 'Import, dịch, burn sub', key: 'S' },
+  { id: 'voice', icon: 'ri-mic-line', title: 'Voice tools', hint: 'TTS, voice clone, preview', key: 'V' },
+  { id: 'execute', icon: 'ri-play-fill', title: 'Render now', hint: 'Chạy pipeline hiện tại', key: 'R' },
+  { id: 'queue', icon: 'ri-list-check-3', title: 'Open queue', hint: 'Xem job monitor', key: 'Q' },
+  { id: 'logs', icon: 'ri-file-list-3-line', title: 'Open logs', hint: 'Xem log theo task', key: 'G' },
+  { id: 'settings', icon: 'ri-settings-4-line', title: 'Settings', hint: 'API keys, FFmpeg, proxy', key: ',' },
+];
+
+function ensureCommandPalette() {
+  let overlay = document.getElementById('command-palette-overlay');
+  if (overlay) return overlay;
+
+  overlay = document.createElement('div');
+  overlay.id = 'command-palette-overlay';
+  overlay.className = 'command-palette-overlay';
+  overlay.innerHTML = `
+    <div class="command-palette" role="dialog" aria-label="Command palette">
+      <div class="command-search">
+        <i class="ri-search-line"></i>
+        <input id="command-search-input" type="text" placeholder="Tìm lệnh..." autocomplete="off" />
+      </div>
+      <div class="command-list" id="command-list"></div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', (event) => {
+    if (event.target === overlay) closeCommandPalette();
+  });
+  overlay.querySelector('#command-search-input')?.addEventListener('input', renderCommandList);
+  return overlay;
+}
+
+function renderCommandList() {
+  const overlay = ensureCommandPalette();
+  const input = overlay.querySelector('#command-search-input');
+  const list = overlay.querySelector('#command-list');
+  const query = (input?.value || '').trim().toLowerCase();
+  const actions = commandActions.filter(action => {
+    return action.title.toLowerCase().includes(query) || action.hint.toLowerCase().includes(query);
+  });
+  list.innerHTML = actions.map((action, index) => `
+    <button class="command-item ${index === 0 ? 'active' : ''}" data-command-action="${action.id}">
+      <i class="${action.icon}"></i>
+      <span><strong>${action.title}</strong><small>${action.hint}</small></span>
+      <kbd>${action.key}</kbd>
+    </button>
+  `).join('');
+  list.querySelectorAll('.command-item').forEach(item => {
+    item.addEventListener('click', () => {
+      closeCommandPalette();
+      handleWorkspaceAction(item.dataset.commandAction);
+    });
+  });
+}
+
+function openCommandPalette() {
+  const overlay = ensureCommandPalette();
+  overlay.classList.add('show');
+  const input = overlay.querySelector('#command-search-input');
+  if (input) {
+    input.value = '';
+  }
+  renderCommandList();
+  input?.focus();
+}
+
+function closeCommandPalette() {
+  document.getElementById('command-palette-overlay')?.classList.remove('show');
+}
+
+document.getElementById('btn-command-palette')?.addEventListener('click', openCommandPalette);
+document.addEventListener('keydown', (event) => {
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+    event.preventDefault();
+    openCommandPalette();
+  } else if (event.key === 'Escape') {
+    closeCommandPalette();
+  }
+});
+
+updateWorkspaceMetadata();

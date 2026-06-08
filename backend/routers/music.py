@@ -1,7 +1,7 @@
-from fastapi import APIRouter, HTTPException, BackgroundTasks, UploadFile, File
-from ..services.audio_processor import process_music
+from fastapi import APIRouter, HTTPException, UploadFile, File
+
 from ..config import DATA_DIR
-from pydub import AudioSegment
+from ..services.queue_manager import add_queue_item
 
 router = APIRouter()
 
@@ -21,17 +21,23 @@ def process_audio(
     fade_in: float = 0,
     fade_out: float = 0,
     normalize: bool = False,
-    bg: BackgroundTasks = None,
+    project_id: int = 0,
 ):
-    bg.add_task(process_music, input_path, volume, fade_in, fade_out, normalize)
-    return {"message": "Đã đưa tiến trình xử lý vào hàng đợi"}
+    item_id = add_queue_item(
+        project_id,
+        "process_music",
+        input_path,
+        {"volume": volume, "fade_in": fade_in, "fade_out": fade_out, "normalize": normalize},
+    )
+    return {"id": item_id, "message": "Da dua tien trinh xu ly vao hang doi"}
 
 
 @router.post("/duck")
-def auto_ducking(music_path: str, voice_path: str, bg: BackgroundTasks):
-    from ..services.audio_processor import auto_duck
-    bg.add_task(auto_duck, music_path, voice_path)
-    return {"message": "Đã đưa tiến trình Ducking vào hàng đợi"}
+def auto_ducking(data: dict):
+    music_path = data.get("music_path", "")
+    voice_path = data.get("voice_path", "")
+    item_id = add_queue_item(data.get("project_id", 0), "duck_music", music_path, {"voice_path": voice_path})
+    return {"id": item_id, "message": "Da dua tien trinh ducking vao hang doi"}
 
 
 @router.get("/files")
@@ -46,22 +52,18 @@ def list_music():
 
 
 @router.post("/crossfade")
-def crossfade_music(audio_a: str, audio_b: str, duration: float = 2.0, bg: BackgroundTasks = None):
-    from ..services.ffmpeg_utils import run_ffmpeg
+def crossfade_music(audio_a: str, audio_b: str, duration: float = 2.0, project_id: int = 0):
     import os
     if not os.path.exists(audio_a) or not os.path.exists(audio_b):
-        raise HTTPException(400, "Cả hai tệp âm thanh đều phải tồn tại")
+        raise HTTPException(400, "Ca hai tep am thanh deu phai ton tai")
     out = str(DATA_DIR / "downloads" / f"crossfade_{os.path.basename(audio_a)}")
     cmd = [
         "-i", audio_a, "-i", audio_b,
         "-filter_complex", f"acrossfade=d={duration}",
         "-y", out,
     ]
-    if bg:
-        bg.add_task(run_ffmpeg, cmd)
-    else:
-        run_ffmpeg(cmd)
-    return {"output": out}
+    item_id = add_queue_item(project_id, "ffmpeg_command", audio_a, {"cmd": cmd, "output_path": out, "category": "audio"})
+    return {"id": item_id, "output": out}
 
 
 @router.get("/playlist")
@@ -92,7 +94,7 @@ def save_playlist(data: dict):
     import json
     f = playlist_dir / f"{name.lower().replace(' ', '_')}.json"
     f.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
-    return {"message": f"Đã lưu Playlist '{name}'", "file": str(f)}
+    return {"message": f"Da luu Playlist '{name}'", "file": str(f)}
 
 
 @router.delete("/playlist/{name}")
@@ -101,4 +103,4 @@ def delete_playlist(name: str):
     f = playlist_dir / f"{name.lower().replace(' ', '_')}.json"
     if f.exists():
         f.unlink()
-    return {"message": f"Đã xóa Playlist '{name}'"}
+    return {"message": f"Da xoa Playlist '{name}'"}

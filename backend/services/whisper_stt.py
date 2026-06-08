@@ -1,7 +1,5 @@
 import os
-import json
-from pathlib import Path
-from ..config import WHISPER_MODEL, WHISPER_DEVICE, SUBTITLES_DIR, VOCAL_SEPARATION_ENABLED
+from ..config import WHISPER_MODEL, WHISPER_DEVICE, WHISPER_COMPUTE_TYPE, SUBTITLES_DIR, VOCAL_SEPARATION_ENABLED
 from ..database import db_cursor
 
 
@@ -21,7 +19,14 @@ def transcribe(audio_path: str, language: str = "vi", project_id: int = 0, use_w
     log_to_db(f"Bắt đầu nhận dạng giọng nói cho tệp: {os.path.basename(audio_path)} (Ngôn ngữ: {language}){' với WhisperX' if use_whisperx else ''}", project_id=project_id)
 
     from .stt_worker import transcribe_subprocess
-    result = transcribe_subprocess(audio_path, language, WHISPER_MODEL, use_whisperx=use_whisperx)
+    result = transcribe_subprocess(
+        audio_path,
+        language,
+        WHISPER_MODEL,
+        use_whisperx=use_whisperx,
+        device=WHISPER_DEVICE,
+        compute_type=WHISPER_COMPUTE_TYPE,
+    )
 
     if result.get("error"):
         log_to_db(f"Lỗi nhận dạng giọng nói: {result['error']}", level="ERROR", project_id=project_id)
@@ -89,5 +94,10 @@ def transcribe_video(video_path: str, language: str = "vi", project_id: int = 0,
 def transcribe_file(audio_path: str, use_whisperx: bool = False) -> str:
     """Transcribe and return raw text only."""
     from .stt_worker import transcribe_subprocess
-    result = transcribe_subprocess(audio_path, use_whisperx=use_whisperx)
+    result = transcribe_subprocess(
+        audio_path,
+        use_whisperx=use_whisperx,
+        device=WHISPER_DEVICE,
+        compute_type=WHISPER_COMPUTE_TYPE,
+    )
     return result.get("text", "")

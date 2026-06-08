@@ -1,6 +1,4 @@
 import os
-import json
-import subprocess
 from pathlib import Path
 from ..config import EXPORTS_DIR
 from ..database import db_cursor

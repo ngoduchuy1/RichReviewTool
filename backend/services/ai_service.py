@@ -1,8 +1,4 @@
-import os
-import json
-from pathlib import Path
-from ..config import OPENAI_API_KEY, CACHE_DIR
-from ..database import db_cursor
+from ..config import OPENAI_API_KEY
 import requests
 
 

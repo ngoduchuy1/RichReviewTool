@@ -1,21 +1,39 @@
-from fastapi import APIRouter, HTTPException, BackgroundTasks
-from ..models.schemas import DownloadRequest
-from ..services.downloader import download_video
+from fastapi import APIRouter, HTTPException
+
 from ..database import db_cursor
+from ..services.queue_manager import add_queue_item
 
 router = APIRouter()
 
 
 @router.post("/")
-def start_download(data: DownloadRequest, bg: BackgroundTasks):
+def start_download(data: dict):
+    url = data.get("url", "")
+    if not url:
+        raise HTTPException(400, "Yeu cau cung cap url")
+
     with db_cursor() as cur:
         cur.execute(
             "INSERT INTO downloads (url, platform, status) VALUES (?,?,?)",
-            (data.url, data.platform or "auto", "waiting"),
+            (url, data.get("platform") or "auto", "waiting"),
         )
         dl_id = cur.lastrowid
-    bg.add_task(download_video, dl_id, data.url, data.quality, data.cookie_file, data.proxy, data.output_dir)
-    return {"id": dl_id, "message": "Đã đưa tiến trình tải về vào hàng đợi"}
+
+    item_id = add_queue_item(
+        data.get("project_id", 0),
+        "download",
+        "",
+        {
+            "download_id": dl_id,
+            "url": url,
+            "quality": data.get("quality", "best"),
+            "cookie_file": data.get("cookie_file"),
+            "proxy": data.get("proxy"),
+            "output_dir": data.get("output_dir"),
+            "platform": data.get("platform", "auto"),
+        },
+    )
+    return {"id": dl_id, "queue_id": item_id, "message": "Da dua tien trinh tai ve vao hang doi"}
 
 
 @router.get("/")
@@ -30,7 +48,7 @@ def get_download(dl_id: int):
     with db_cursor() as cur:
         row = cur.execute("SELECT * FROM downloads WHERE id=?", (dl_id,)).fetchone()
         if not row:
-            raise HTTPException(404, "Không tìm thấy lượt tải xuống")
+            raise HTTPException(404, "Khong tim thay luot tai xuong")
         return dict(row)
 
 
@@ -38,4 +56,4 @@ def get_download(dl_id: int):
 def cancel_download(dl_id: int):
     with db_cursor() as cur:
         cur.execute("UPDATE downloads SET status='cancelled' WHERE id=?", (dl_id,))
-    return {"message": "Đã hủy tải xuống"}
+    return {"message": "Da huy tai xuong"}

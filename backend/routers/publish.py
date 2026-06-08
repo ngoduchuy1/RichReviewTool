@@ -1,35 +1,42 @@
-from fastapi import APIRouter, HTTPException, BackgroundTasks, Query
-from ..services.publish_service import publish_youtube, publish_tiktok, publish_facebook, list_published
-from ..database import db_cursor
+from fastapi import APIRouter, HTTPException
+
+from ..services.publish_service import list_published
+from ..services.queue_manager import add_queue_item
 
 router = APIRouter()
 
 
-@router.post("/youtube")
-def youtube(data: dict, bg: BackgroundTasks):
+def _queue_publish(platform: str, data: dict):
     video_path = data.get("video_path", "")
     if not video_path:
-        raise HTTPException(400, "Yêu cầu cung cấp video_path")
-    bg.add_task(publish_youtube, video_path, data.get("title", "My Video"), data.get("description", ""), data.get("privacy", "private"))
-    return {"message": "Đã đưa tiến trình đăng YouTube vào hàng đợi"}
+        raise HTTPException(400, "Yeu cau cung cap video_path")
+    item_id = add_queue_item(
+        data.get("project_id", 0),
+        "publish",
+        video_path,
+        {
+            "platform": platform,
+            "title": data.get("title", "My Video"),
+            "description": data.get("description", ""),
+            "privacy": data.get("privacy", "private"),
+        },
+    )
+    return {"id": item_id, "message": f"Da dua tien trinh dang {platform} vao hang doi"}
+
+
+@router.post("/youtube")
+def youtube(data: dict):
+    return _queue_publish("youtube", data)
 
 
 @router.post("/tiktok")
-def tiktok(data: dict, bg: BackgroundTasks):
-    video_path = data.get("video_path", "")
-    if not video_path:
-        raise HTTPException(400, "Yêu cầu cung cấp video_path")
-    bg.add_task(publish_tiktok, video_path, data.get("title", "My Video"), data.get("description", ""))
-    return {"message": "Đã đưa tiến trình đăng TikTok vào hàng đợi"}
+def tiktok(data: dict):
+    return _queue_publish("tiktok", data)
 
 
 @router.post("/facebook")
-def facebook(data: dict, bg: BackgroundTasks):
-    video_path = data.get("video_path", "")
-    if not video_path:
-        raise HTTPException(400, "Yêu cầu cung cấp video_path")
-    bg.add_task(publish_facebook, video_path, data.get("title", "My Video"), data.get("description", ""))
-    return {"message": "Đã đưa tiến trình đăng Facebook vào hàng đợi"}
+def facebook(data: dict):
+    return _queue_publish("facebook", data)
 
 
 @router.get("/history")

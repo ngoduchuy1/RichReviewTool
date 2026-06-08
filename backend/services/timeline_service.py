@@ -6,7 +6,6 @@ import json
 from ..database import db_cursor
 from ..config import PROJECTS_DIR
 from pathlib import Path
-from datetime import datetime
 
 
 def _timeline_file(project_id: int) -> Path:

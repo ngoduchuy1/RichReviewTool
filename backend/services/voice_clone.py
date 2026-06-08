@@ -1,7 +1,6 @@
 import os
 import warnings
 import numpy as np
-from pathlib import Path
 from ..config import VOICES_DIR
 
 _bark_loaded = False
