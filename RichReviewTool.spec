@@ -9,7 +9,7 @@ a = Analysis(
     binaries=[],
     datas=[
         ('backend', 'backend'),
-        ('vendor', 'vendor'),
+        ('vendor/capcut-tts-api', 'vendor/capcut-tts-api'),
         ('index.html', '.'),
         ('style.css', '.'),
         ('app.js', '.'),
