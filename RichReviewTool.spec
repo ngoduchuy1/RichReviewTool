@@ -9,6 +9,7 @@ a = Analysis(
     binaries=[],
     datas=[
         ('backend', 'backend'),
+        ('vendor', 'vendor'),
         ('index.html', '.'),
         ('style.css', '.'),
         ('app.js', '.'),

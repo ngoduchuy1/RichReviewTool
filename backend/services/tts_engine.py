@@ -351,33 +351,43 @@ def _capcut_tts(text, voice, speed, out):
     name, resource_id, platform = _parse_capcut_voice(voice)
     final_out = Path(out)
     download_out = final_out if final_out.suffix.lower() == ".mp3" else final_out.with_suffix(".capcut.mp3")
-    env = os.environ.copy()
-    env.update({
-        "CAPCUT_TTS_OUTPUT": str(download_out),
-        "CAPCUT_SSCRONET_DLL": sscronet,
-        "CAPCUT_VOICE_NAME": name,
-        "CAPCUT_VOICE_RESOURCE_ID": resource_id,
-        "CAPCUT_VOICE_PLATFORM": platform,
-        "CAPCUT_VOICE_RATE": str(max(0.5, min(2.0, float(speed or 1.0)))),
-    })
-    cmd = [sys.executable, str(script), text]
-    startupinfo = subprocess.STARTUPINFO() if hasattr(subprocess, "STARTUPINFO") else None
-    if startupinfo is not None:
-        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-    proc = subprocess.run(
-        cmd,
-        cwd=str(win_dir),
-        env=env,
-        capture_output=True,
-        text=True,
-        timeout=TTS_TIMEOUT,
-        startupinfo=startupinfo,
-        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-    )
-    if proc.returncode != 0:
-        raise RuntimeError(f"CapCut TTS failed: {(proc.stderr or proc.stdout)[-2000:]}")
+
+    # Set environment variables for config.py and capcut_tts_ctypes.py
+    os.environ["CAPCUT_TTS_OUTPUT"] = str(download_out)
+    os.environ["CAPCUT_SSCRONET_DLL"] = sscronet
+    os.environ["CAPCUT_VOICE_NAME"] = name
+    os.environ["CAPCUT_VOICE_RESOURCE_ID"] = resource_id
+    os.environ["CAPCUT_VOICE_PLATFORM"] = platform
+    os.environ["CAPCUT_VOICE_RATE"] = str(max(0.5, min(2.0, float(speed or 1.0))))
+
+    # Call CapCut TTS in-process to avoid python interpreter dependency
+    import importlib.util
+
+    orig_sys_path = list(sys.path)
+    win_dir_str = str(win_dir)
+    if win_dir_str not in sys.path:
+        sys.path.insert(0, win_dir_str)
+
+    try:
+        # Force reload modules to pick up updated environment variables
+        for mod_name in ["config", "cronet_client", "capcut_tts_ctypes"]:
+            if mod_name in sys.modules:
+                del sys.modules[mod_name]
+
+        spec = importlib.util.spec_from_file_location("capcut_tts_ctypes", str(script))
+        capcut_module = importlib.util.module_from_spec(spec)
+        sys.modules["capcut_tts_ctypes"] = capcut_module
+        spec.loader.exec_module(capcut_module)
+
+        capcut_module.process_tts(text)
+    except Exception as e:
+        raise RuntimeError(f"CapCut TTS in-process failed: {e}")
+    finally:
+        sys.path = orig_sys_path
+
     if not download_out.exists() or download_out.stat().st_size == 0:
-        raise RuntimeError(f"CapCut TTS did not create output. Log: {(proc.stdout or proc.stderr)[-2000:]}")
+        raise RuntimeError("CapCut TTS did not create output file.")
+
     if download_out != final_out:
         from .ffmpeg_utils import run_ffmpeg
         if not run_ffmpeg(["-i", str(download_out), "-ar", "22050", "-ac", "1", "-y", str(final_out)]):
