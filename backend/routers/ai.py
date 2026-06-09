@@ -76,6 +76,11 @@ def title_gen(data: AITitleRequest):
     return {"id": item_id, "message": "Da dua tien trinh tao title vao hang doi", "project_id": data.project_id}
 
 
+@router.post("/titles")
+def titles_gen(data: AITitleRequest):
+    return title_gen(data)
+
+
 @router.post("/hashtags")
 def hashtags(data: AIHashtagRequest):
     item_id = add_queue_item(

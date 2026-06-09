@@ -6,7 +6,7 @@
   <title>0xForge V2.0.0</title>
   <meta name="description" content="Công cụ xử lý video, lồng tiếng, phụ đề tự động chuyên nghiệp - Full Backend." />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" />
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css?v=20260609-queue-hidden" />
 </head>
 <body>
   <div id="app">
@@ -224,7 +224,7 @@
               </div>
               <div class="tab-row mt6" id="row-fpt-key" style="display: none;">
                 <label class="field-label" style="color: var(--accent); font-weight: bold;">FPT API Key:</label>
-                <input type="text" class="text-input" id="inp-fpt-key" value="4pgQbwd6INSU8YWqNefwOawOI2gALxz7" placeholder="Nhập FPT.AI API Key..." style="flex:1" />
+                <input type="text" class="text-input" id="inp-fpt-key" placeholder="Nhập FPT.AI API Key..." style="flex:1" />
               </div>
               <div class="tab-row mt6">
                 <label class="field-label">Ngôn Ngữ Đọc:</label>
@@ -403,17 +403,17 @@
                     <button class="action-btn" id="btn-sub-trans-batch"><i class="ri-translate-2"></i> Translate All</button>
                   </div>
                   <div class="tree-leaf-content" id="leaf-sub-style-font">
-                    <div class="feat-row"><label class="field-label">Font</label><select class="select-input" style="width:100px"><option>Arial</option><option>Roboto</option><option>Tahoma</option></select></div>
-                    <div class="feat-row"><label class="field-label">Size</label><input class="text-input num" type="number" value="42" /></div>
+                    <div class="feat-row"><label class="field-label">Font</label><select class="select-input" id="sel-sub-font" style="width:100px"><option>Arial</option><option>Roboto</option><option>Tahoma</option></select></div>
+                    <div class="feat-row"><label class="field-label">Size</label><input class="text-input num" id="inp-sub-size" type="number" value="42" /></div>
                   </div>
                   <div class="tree-leaf-content" id="leaf-sub-style-color">
-                    <div class="feat-row"><label class="field-label">Color</label><input class="color-pick" type="color" value="#ffffff" /></div>
-                    <div class="feat-row"><label class="field-label">Stroke</label><input class="text-input num" type="number" value="2" /></div>
+                    <div class="feat-row"><label class="field-label">Color</label><input class="color-pick" id="inp-sub-color" type="color" value="#ffffff" /></div>
+                    <div class="feat-row"><label class="field-label">Stroke</label><input class="text-input num" id="inp-sub-stroke" type="number" value="2" /></div>
                   </div>
                   <div class="tree-leaf-content" id="leaf-sub-style-shadow">
-                    <div class="feat-row"><label class="field-label">Shadow</label><select class="select-input" style="width:80px"><option>Soft</option><option>Hard</option><option>Off</option></select></div>
-                    <div class="feat-row"><label class="field-label">Bg</label><input class="color-pick" type="color" value="#000000" /></div>
-                    <div class="feat-row"><label class="field-label">Pos</label><select class="select-input" style="width:80px"><option>Bottom</option><option>Center</option><option>Top</option></select></div>
+                    <div class="feat-row"><label class="field-label">Shadow</label><select class="select-input" id="sel-sub-shadow" style="width:80px"><option>Soft</option><option>Hard</option><option>Off</option></select></div>
+                    <div class="feat-row"><label class="field-label">Bg</label><input class="color-pick" id="inp-sub-bg" type="color" value="#000000" /></div>
+                    <div class="feat-row"><label class="field-label">Pos</label><select class="select-input" id="sel-sub-position" style="width:80px"><option>Bottom</option><option>Center</option><option>Top</option></select></div>
                   </div>
                   <div class="tree-leaf-content" id="leaf-sub-exp-burn">
                     <label class="feature-item custom-checkbox"><input type="checkbox" checked id="chk-sub-burn" /><span class="chk-box"></span><span class="field-label">Burn Subtitle</span></label>
@@ -471,19 +471,19 @@
 
                 <div class="section-label">Hiệu ứng</div>
                 <div class="feature-list">
-                  <label class="feature-item custom-checkbox"><input type="checkbox" checked /><span class="chk-box"></span><span class="field-label">Chuyển cảnh</span></label>
-                  <label class="feature-item custom-checkbox"><input type="checkbox" checked /><span class="chk-box"></span><span class="field-label">Thu phóng</span></label>
-                  <label class="feature-item custom-checkbox"><input type="checkbox" /><span class="chk-box"></span><span class="field-label">Làm mờ chuyển động</span></label>
-                  <label class="feature-item custom-checkbox"><input type="checkbox" /><span class="chk-box"></span><span class="field-label">Rung lắc</span></label>
-                  <label class="feature-item custom-checkbox"><input type="checkbox" /><span class="chk-box"></span><span class="field-label">Tăng giảm tốc độ</span></label>
-                  <label class="feature-item custom-checkbox"><input type="checkbox" /><span class="chk-box"></span><span class="field-label">Quay chậm</span></label>
-                  <label class="feature-item custom-checkbox"><input type="checkbox" /><span class="chk-box"></span><span class="field-label">Tua nhanh</span></label>
-                  <label class="feature-item custom-checkbox"><input type="checkbox" /><span class="chk-box"></span><span class="field-label">Hiệu ứng hạt</span></label>
+                  <label class="feature-item custom-checkbox"><input type="checkbox" checked id="chk-enhance-transition" /><span class="chk-box"></span><span class="field-label">Chuyển cảnh</span></label>
+                  <label class="feature-item custom-checkbox"><input type="checkbox" checked id="chk-enhance-zoom" /><span class="chk-box"></span><span class="field-label">Thu phóng</span></label>
+                  <label class="feature-item custom-checkbox"><input type="checkbox" id="chk-enhance-motion" /><span class="chk-box"></span><span class="field-label">Làm mờ chuyển động</span></label>
+                  <label class="feature-item custom-checkbox"><input type="checkbox" id="chk-enhance-shake" /><span class="chk-box"></span><span class="field-label">Rung lắc</span></label>
+                  <label class="feature-item custom-checkbox"><input type="checkbox" id="chk-enhance-speed" /><span class="chk-box"></span><span class="field-label">Tăng giảm tốc độ</span></label>
+                  <label class="feature-item custom-checkbox"><input type="checkbox" id="chk-enhance-slow" /><span class="chk-box"></span><span class="field-label">Quay chậm</span></label>
+                  <label class="feature-item custom-checkbox"><input type="checkbox" id="chk-enhance-fast" /><span class="chk-box"></span><span class="field-label">Tua nhanh</span></label>
+                  <label class="feature-item custom-checkbox"><input type="checkbox" id="chk-enhance-particles" /><span class="chk-box"></span><span class="field-label">Hiệu ứng hạt</span></label>
                 </div>
 
                 <div class="section-label">Nhãn hiệu</div>
                 <div class="feature-list">
-                  <label class="feature-item custom-checkbox"><input type="checkbox" checked /><span class="chk-box"></span><span class="field-label">Đóng dấu bản quyền</span></label>
+                  <label class="feature-item custom-checkbox"><input type="checkbox" checked id="chk-enhance-watermark" /><span class="chk-box"></span><span class="field-label">Đóng dấu bản quyền</span></label>
                   <button class="action-btn" id="btn-branding-logo">Chèn Logo</button>
                   <button class="action-btn" id="btn-branding-text">Chèn Chữ</button>
                   <button class="action-btn" id="btn-branding-qr">Chèn mã QR</button>

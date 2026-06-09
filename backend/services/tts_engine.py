@@ -15,6 +15,7 @@ TTS_TIMEOUT = 300  # seconds (increased for chunked synthesis)
 CHUNK_MAX_CHARS = 2000  # max characters per edge-tts request
 CHUNK_MAX_RETRIES = 3  # retry attempts per chunk
 CHUNK_RETRY_DELAY = 2  # seconds between retries (doubles each attempt)
+TIMELINE_MAX_TEMPO = float(os.environ.get("TTS_TIMELINE_MAX_TEMPO", "1.25"))
 _valtec_tts_instance = None
 
 
@@ -123,7 +124,12 @@ def synthesize(text: str, provider: str, voice: str, speed: float, output_path: 
     elif provider == "valtec":
         _run_with_timeout(_valtec_tts, (text, voice, speed, output_path))
     elif provider == "capcut":
-        _run_with_timeout(_capcut_tts, (text, voice, speed, output_path))
+        from .job_logger import job_log
+        try:
+            _run_with_timeout(_capcut_tts, (text, voice, speed, output_path))
+        except Exception as e:
+            job_log("warning", f"CapCut TTS failed (voice={voice}): {e}. Falling back to Vietnamese Edge TTS.")
+            _edge_tts(text, "vi-VN-HoaiMyNeural", speed, output_path)
     elif provider == "clone":
         _clone_tts(text, voice, output_path)
     else:
@@ -488,8 +494,25 @@ def _get_audio_duration(path: str) -> float:
             return 0.0
 
 
-def _process_single_segment(idx, seg, provider, voice, speed, base_dir, api_key, sample_rate) -> tuple:
+def _audio_tempo_filters(tempo: float) -> list:
+    filters = []
+    remaining = max(0.5, float(tempo or 1.0))
+    while remaining > 2.0:
+        filters.append("atempo=2.0")
+        remaining /= 2.0
+    while remaining < 0.5:
+        filters.append("atempo=0.5")
+        remaining /= 0.5
+    if abs(remaining - 1.0) > 0.01:
+        filters.append(f"atempo={remaining:.2f}")
+    return filters
+
+
+def _process_single_segment(idx, seg, provider, voice, speed, base_dir, api_key, sample_rate, job_id=None) -> tuple:
     from ..config import FFMPEG_PATH
+    if job_id:
+        from .job_logger import set_current_job_id
+        set_current_job_id(job_id)
     start_time = seg["start"]
     end_time = seg["end"]
     lang = (voice or "vi").split("-")[0].lower()
@@ -507,14 +530,8 @@ def _process_single_segment(idx, seg, provider, voice, speed, base_dir, api_key,
         target_dur = end_time - start_time
         
         if synth_dur > target_dur and target_dur > 0.1:
-            tempo = min(synth_dur / target_dur, 2.0)
-            
-            filters = []
-            while tempo > 2.0:
-                filters.append("atempo=2.0")
-                tempo /= 2.0
-            if tempo > 0.5:
-                filters.append(f"atempo={tempo:.2f}")
+            tempo = min(synth_dur / target_dur, TIMELINE_MAX_TEMPO)
+            filters = _audio_tempo_filters(tempo)
                 
             filter_str = ",".join(filters)
             cmd = [
@@ -568,11 +585,13 @@ def synthesize_timeline(srt_content: str, provider: str, voice: str, speed: floa
         completed_count = 0
         results = [None] * len(segments)
         
+        from .job_logger import get_current_job_id, job_log
+        job_id = get_current_job_id()
         with ThreadPoolExecutor(max_workers=8) as executor:
             for idx, seg in enumerate(segments):
                 f = executor.submit(
                     _process_single_segment,
-                    idx, seg, provider, voice, speed, base_dir, api_key, sample_rate
+                    idx, seg, provider, voice, speed, base_dir, api_key, sample_rate, job_id
                 )
                 futures[f] = idx
                 
@@ -588,7 +607,7 @@ def synthesize_timeline(srt_content: str, provider: str, voice: str, speed: floa
                 try:
                     res_idx, raw_p, norm_p, err = f.result()
                     if err:
-                        print(f"[TTS] Segment {res_idx} failed: {err}")
+                        job_log("error", f"[TTS] Segment {res_idx} failed: {err}")
                     results[res_idx] = (raw_p, norm_p)
                     if raw_p:
                         temp_files.append(raw_p)

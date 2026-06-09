@@ -25,6 +25,14 @@ def apply_enhancements(data: EnhanceRequest):
         filters.append(f"vignette=PI*{data.vignette/100}")
     if data.temperature is not None:
         filters.append(f"colorbalance=rs={max(-1,(data.temperature-50)/100)}:bs={max(-1,(50-data.temperature)/100)}")
+    film_look = (data.film_look or "").lower()
+    if "kịch" in film_look or "kich" in film_look:
+        filters.append("eq=contrast=1.18:saturation=0.92")
+        filters.append("unsharp=5:5:0.5")
+    elif "hành" in film_look or "hanh" in film_look:
+        filters.append("eq=contrast=1.12:saturation=1.2")
+    elif "review" in film_look:
+        filters.append("eq=contrast=1.05:saturation=1.05")
     if getattr(data, "motion_blur", False):
         filters.append("minterpolate=mi_mode=mci:mc_mode=aobmc:vsbmc=1:fps=60")
     if getattr(data, "zoom", False):

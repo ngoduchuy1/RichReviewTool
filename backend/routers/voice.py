@@ -1,8 +1,11 @@
+import hashlib
+
 from fastapi import APIRouter, UploadFile, File
 
 from ..config import VOICES_DIR
 from ..models.schemas import TTSRequest
 from ..services.queue_manager import add_queue_item
+from ..services.tts_engine import synthesize
 
 router = APIRouter()
 
@@ -88,16 +91,10 @@ def export_clone_voices():
 
 @router.get("/play")
 def play_voice(text: str = "Xin chao, day la giong doc thu nghiem", provider: str = "edge", voice: str = "vi-VN-NamMinhNeural", fpt_api_key: str = None, project_id: int = 0):
-    out = str(VOICES_DIR / "play_test.wav")
-    item_id = add_queue_item(project_id, "tts_text", "", {
-        "text": text,
-        "provider": provider,
-        "voice": voice,
-        "speed": 1.0,
-        "api_key": fpt_api_key,
-        "output_path": out,
-    })
-    return {"id": item_id, "message": "Da dua tien trinh nghe thu vao hang doi", "output": out}
+    key = hashlib.sha1(f"{provider}|{voice}|{text}".encode("utf-8")).hexdigest()[:12]
+    out = str(VOICES_DIR / f"preview_{key}.wav")
+    synthesize(text, provider, voice, 1.0, out, api_key=fpt_api_key)
+    return {"ready": True, "message": "Da tao file nghe thu", "output": out}
 
 
 @router.get("/edge-voices")

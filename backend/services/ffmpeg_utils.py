@@ -105,6 +105,9 @@ def _append_video_encoding_args(cmd: list, params: dict):
         return
 
     if chosen_codec in {"libx264", "libx265"}:
+        valid_presets = {"ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow", "placebo"}
+        if preset not in valid_presets:
+            preset = "veryfast" if quality == "draft" else "medium"
         if bitrate:
             cmd.extend(["-preset", preset, "-b:v", bitrate])
         else:
@@ -155,15 +158,16 @@ def _run_ffmpeg_legacy(cmd: list, timeout: int = 3600) -> bool:
 
  
 def run_ffmpeg(cmd: list, timeout: int = 3600, progress_cb=None, duration: float = None) -> bool:
+    from .job_logger import job_log
     use_progress = bool(progress_cb and duration and duration > 0)
     progress_args = ["-nostats", "-progress", "pipe:1"] if use_progress else []
     full_cmd = [FFMPEG_PATH, "-y"] + progress_args + cmd
-    print(f"[FFmpeg] {' '.join(str(a) for a in full_cmd)}")
+    job_log("info", f"[FFmpeg] Executing: {' '.join(str(a) for a in full_cmd)}")
     if use_progress:
         return _run_ffmpeg_with_progress(full_cmd, timeout, float(duration), progress_cb)
 
     try:
-        subprocess.run(
+        res = subprocess.run(
             full_cmd,
             check=True,
             capture_output=True,
@@ -172,18 +176,22 @@ def run_ffmpeg(cmd: list, timeout: int = 3600, progress_cb=None, duration: float
             startupinfo=_startupinfo(),
             creationflags=_creationflags(),
         )
+        # Log standard output if any
+        if res.stdout and res.stdout.strip():
+            job_log("info", f"[FFmpeg] Output: {res.stdout.strip()}")
         return True
     except subprocess.CalledProcessError as e:
         err = e.stderr or ""
         tail = err[-2000:] if len(err) > 2000 else err
-        print(f"[FFmpeg] ERROR (rc={e.returncode}): {tail}")
+        job_log("error", f"[FFmpeg] ERROR (rc={e.returncode}): {tail}")
         return False
     except FileNotFoundError:
-        print("[FFmpeg] NOT FOUND - install FFmpeg or set FFMPEG_PATH env")
+        job_log("error", "[FFmpeg] NOT FOUND - install FFmpeg or set FFMPEG_PATH env")
         return False
 
 
 def _run_ffmpeg_with_progress(full_cmd: list, timeout: int, duration: float, progress_cb) -> bool:
+    from .job_logger import job_log
     tail = []
     started = time.monotonic()
     try:
@@ -198,7 +206,7 @@ def _run_ffmpeg_with_progress(full_cmd: list, timeout: int, duration: float, pro
             creationflags=_creationflags(),
         )
     except FileNotFoundError:
-        print("[FFmpeg] NOT FOUND - install FFmpeg or set FFMPEG_PATH env")
+        job_log("error", "[FFmpeg] NOT FOUND - install FFmpeg or set FFMPEG_PATH env")
         return False
 
     try:
@@ -220,16 +228,17 @@ def _run_ffmpeg_with_progress(full_cmd: list, timeout: int, duration: float, pro
                     pass
             if timeout and time.monotonic() - started > timeout:
                 process.kill()
-                print(f"[FFmpeg] ERROR: timeout after {timeout}s")
+                job_log("error", f"[FFmpeg] ERROR: timeout after {timeout}s")
                 return False
         rc = process.wait(timeout=5)
     except subprocess.TimeoutExpired:
         process.kill()
-        print(f"[FFmpeg] ERROR: timeout after {timeout}s")
+        job_log("error", f"[FFmpeg] ERROR: timeout after {timeout}s")
         return False
 
     if rc != 0:
-        print(f"[FFmpeg] ERROR (rc={rc}): {' | '.join(tail[-20:])}")
+        err_msg = ' | '.join(tail[-20:])
+        job_log("error", f"[FFmpeg] ERROR (rc={rc}): {err_msg}")
         return False
     return True
 
@@ -340,6 +349,8 @@ def single_pass_render(video_path: str, output_path: str, params: dict = None, p
             "size": int(p.get("subtitle_size", 42)),
             "color": p.get("subtitle_color", "#FFFFFF"),
             "shadow": p.get("subtitle_shadow", "soft"),
+            "stroke": int(p.get("subtitle_stroke", 2)),
+            "position": p.get("subtitle_position", "bottom"),
         }
         sub_ext = Path(sub_path).suffix.lower()
         

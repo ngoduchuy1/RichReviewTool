@@ -13,6 +13,7 @@ a = Analysis(
         ('index.html', '.'),
         ('style.css', '.'),
         ('app.js', '.'),
+        ('.env', '.'),
     ],
     hiddenimports=[
         'uvicorn.logging',

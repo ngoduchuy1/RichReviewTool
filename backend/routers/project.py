@@ -22,7 +22,8 @@ def list_projects():
 
 @router.post("/")
 def create_project(data: ProjectCreate):
-    result = svc_create_project(data.name, data.preset, data.resolution, data.fps)
+    preset = data.project_preset or data.preset
+    result = svc_create_project(data.name, preset, data.resolution, data.fps)
     return result
 
 

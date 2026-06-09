@@ -1001,6 +1001,47 @@ input:checked + .slider::before { transform: translateX(16px); background: #9ca3
   color: var(--text-bright);
 }
 
+#batch-manager {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border-dark);
+  background: var(--bg-panel);
+  flex-shrink: 0;
+}
+.batch-left {
+  display: none;
+}
+.batch-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 4px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+.batch-actions .action-btn {
+  height: 34px;
+  min-width: 0;
+  padding: 0 12px;
+  white-space: nowrap;
+}
+.api-usage {
+  display: none;
+}
+.api-usage .api-title {
+  color: var(--text);
+  font-weight: 600;
+}
+.api-usage span {
+  flex-shrink: 0;
+}
+.api-stat {
+  color: var(--text-bright);
+}
+
 .result-table-header {
   display: flex;
   background: var(--bg-panel2);
@@ -1631,19 +1672,103 @@ input:checked + .slider::before { transform: translateX(16px); background: #9ca3
 }
 .queue-job {
   display: flex;
-  align-items: center;
-  gap: 4px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 3px;
   background: var(--bg-input);
   border: 1px solid var(--border-dark);
   border-radius: var(--radius-sm);
-  padding: 2px 8px;
-  height: 22px;
+  padding: 6px 8px;
+  width: min(260px, 100%);
+  min-height: 58px;
   cursor: pointer;
   font-size: 11px;
   font-family: var(--font);
   color: var(--text-muted);
   transition: background var(--transition), border-color var(--transition);
+  overflow: hidden;
+}
+.queue-card-main,
+.queue-card-footer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.queue-card-copy {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1px;
+}
+.queue-name,
+.queue-latest,
+.queue-output {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
+}
+.queue-name {
+  color: var(--text);
+}
+.queue-latest,
+.queue-output {
+  color: var(--text-dim);
+  font-size: 10px;
+}
+.queue-card-meta {
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  color: var(--text-dim);
+  font-size: 9px;
+  line-height: 1.15;
+}
+.queue-card-progress {
+  height: 3px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--bg-panel);
+}
+.queue-card-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+}
+.queue-card-footer {
+  justify-content: space-between;
+}
+.queue-output {
+  flex: 1;
+}
+.queue-card-actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 3px;
+}
+.queue-card-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--border-dark);
+  border-radius: var(--radius-sm);
+  background: var(--bg-panel);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.queue-card-action:hover {
+  color: var(--text-bright);
+  border-color: var(--border-light);
 }
 .queue-job:hover {
   background: var(--bg-tab-active);

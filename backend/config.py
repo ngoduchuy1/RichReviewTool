@@ -11,7 +11,8 @@ else:
     EXE_DIR = Path(__file__).resolve().parent.parent
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(BASE_DIR / ".env")
+load_dotenv(EXE_DIR / ".env")
+load_dotenv(BASE_DIR / ".env", override=False)
 DATA_DIR = EXE_DIR / "data"
 DB_DIR = DATA_DIR / "db"
 PROJECTS_DIR = DATA_DIR / "projects"

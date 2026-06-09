@@ -13,14 +13,19 @@ def is_ocr_available() -> bool:
     return RapidOCR is not None and cv2 is not None
 
 def log_to_db(message: str, level: str = "INFO", project_id: int = 0):
-    try:
-        with db_cursor() as cur:
-            cur.execute(
-                "INSERT INTO job_logs (queue_item_id, level, message) VALUES (NULL,?,?)",
-                (level, f"[RapidOCR] {message}")
-            )
-    except Exception as e:
-        print(f"Error logging to db: {e}")
+    from .job_logger import get_current_job_id, job_log
+    job_id = get_current_job_id()
+    if job_id:
+        job_log(level, f"[RapidOCR] {message}")
+    else:
+        try:
+            with db_cursor() as cur:
+                cur.execute(
+                    "INSERT INTO job_logs (queue_item_id, level, message) VALUES (NULL,?,?)",
+                    (level.lower(), f"[RapidOCR] {message}")
+                )
+        except Exception as e:
+            print(f"Error logging to db: {e}")
 
 def extract_hard_subtitles(video_path: str, project_id: int, region: dict = None) -> dict:
     """Extract hardcoded subtitles from video using RapidOCR and save as SRT."""

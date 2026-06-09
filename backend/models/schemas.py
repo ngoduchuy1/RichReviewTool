@@ -5,6 +5,7 @@ from typing import Optional, List
 class ProjectCreate(BaseModel):
     name: str
     preset: str = "Movie Review"
+    project_preset: Optional[str] = None
     resolution: str = "1920x1080"
     fps: int = 30
 
@@ -78,6 +79,7 @@ class EnhanceRequest(BaseModel):
     saturation: Optional[float] = None
     temperature: Optional[float] = None
     vignette: Optional[float] = None
+    film_look: Optional[str] = None
     watermark: Optional[bool] = False
     watermark_text: Optional[str] = "0xForge"
     transition: Optional[bool] = False

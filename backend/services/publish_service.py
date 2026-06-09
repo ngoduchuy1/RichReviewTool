@@ -4,7 +4,7 @@ from ..config import EXPORTS_DIR
 from ..database import db_cursor
 
 
-def publish_youtube(video_path: str, title: str, description: str = "", privacy: str = "private", category: str = "22"):
+def publish_youtube(video_path: str, title: str, description: str = "", privacy: str = "private", category: str = "22", project_id: int = 0):
     try:
         from google.oauth2.credentials import Credentials
         from googleapiclient.discovery import build
@@ -23,20 +23,20 @@ def publish_youtube(video_path: str, title: str, description: str = "", privacy:
         response = request.execute()
         with db_cursor() as cur:
             cur.execute("INSERT INTO exports (project_id, input_path, output_path, format, status) VALUES (?,?,?,?,?)",
-                        (0, video_path, f"https://youtu.be/{response['id']}", "youtube", "published"))
+                        (project_id, video_path, f"https://youtu.be/{response['id']}", "youtube", "published"))
         return {"success": True, "url": f"https://youtu.be/{response['id']}", "id": response["id"]}
     except ImportError:
-        return _publish_ffmpeg(video_path, title, "youtube")
+        return _publish_ffmpeg(video_path, title, "youtube", project_id)
     except Exception as e:
         return {"success": False, "error": str(e)}
 
 
-def publish_tiktok(video_path: str, title: str, description: str = ""):
+def publish_tiktok(video_path: str, title: str, description: str = "", project_id: int = 0):
     try:
         import requests
         api_key = os.environ.get("TIKTOK_API_KEY", "")
         if not api_key:
-            return _publish_ffmpeg(video_path, title, "tiktok")
+            return _publish_ffmpeg(video_path, title, "tiktok", project_id)
         with open(video_path, "rb") as f:
             resp = requests.post(
                 "https://open-api.tiktok.com/video/upload/",
@@ -48,18 +48,18 @@ def publish_tiktok(video_path: str, title: str, description: str = ""):
         result = resp.json()
         with db_cursor() as cur:
             cur.execute("INSERT INTO exports (project_id, input_path, output_path, format, status) VALUES (?,?,?,?,?)",
-                        (0, video_path, result.get("data", {}).get("share_url", ""), "tiktok", "published"))
+                        (project_id, video_path, result.get("data", {}).get("share_url", ""), "tiktok", "published"))
         return {"success": True, "url": result.get("data", {}).get("share_url", "")}
     except Exception as e:
         return {"success": False, "error": str(e)}
 
 
-def publish_facebook(video_path: str, title: str, description: str = "", page_id: str = "me"):
+def publish_facebook(video_path: str, title: str, description: str = "", page_id: str = "me", project_id: int = 0):
     try:
         import requests
         token = os.environ.get("FACEBOOK_ACCESS_TOKEN", "")
         if not token:
-            return _publish_ffmpeg(video_path, title, "facebook")
+            return _publish_ffmpeg(video_path, title, "facebook", project_id)
         url = f"https://graph.facebook.com/v18.0/{page_id}/videos"
         with open(video_path, "rb") as f:
             resp = requests.post(
@@ -72,13 +72,13 @@ def publish_facebook(video_path: str, title: str, description: str = "", page_id
         video_id = result.get("id", "")
         with db_cursor() as cur:
             cur.execute("INSERT INTO exports (project_id, input_path, output_path, format, status) VALUES (?,?,?,?,?)",
-                        (0, video_path, f"https://fb.watch/{video_id}" if video_id else "", "facebook", "published"))
+                        (project_id, video_path, f"https://fb.watch/{video_id}" if video_id else "", "facebook", "published"))
         return {"success": True, "id": video_id}
     except Exception as e:
         return {"success": False, "error": str(e)}
 
 
-def _publish_ffmpeg(video_path: str, title: str, platform: str):
+def _publish_ffmpeg(video_path: str, title: str, platform: str, project_id: int = 0):
     out_dir = EXPORTS_DIR / "publish"
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = str(out_dir / f"{platform}_{Path(video_path).stem}.mp4")
@@ -87,7 +87,7 @@ def _publish_ffmpeg(video_path: str, title: str, platform: str):
     run_ffmpeg(cmd)
     with db_cursor() as cur:
         cur.execute("INSERT INTO exports (project_id, input_path, output_path, format, status) VALUES (?,?,?,?,?)",
-                    (0, video_path, out_path, platform, "exported"))
+                    (project_id, video_path, out_path, platform, "exported"))
     return {"success": True, "output": out_path, "message": f"Đã chuẩn bị video cho {platform}. Yêu cầu API token để tải lên trực tiếp."}
 
 

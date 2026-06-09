@@ -15,66 +15,71 @@ from ..database import db_cursor
 
 def run_pipeline(queue_item: dict) -> bool:
     """Main dispatcher — routes to correct pipeline based on queue item type."""
+    from .job_logger import set_current_job_id, job_log
     item_id = queue_item["id"]
-    ptype = queue_item["type"]
-    project_id = queue_item["project_id"]
-    input_path = queue_item["input_path"] or ""
-    params = json.loads(queue_item["params"]) if isinstance(queue_item["params"], str) else (queue_item["params"] or {})
-
-    _update(item_id, "running", 0)
-    _log(item_id, "info", f"[{ptype}] Pipeline started for project {project_id}")
-
+    set_current_job_id(item_id)
     try:
-        if ptype == "download":
-            return _download(item_id, project_id, params)
-        elif ptype == "transcribe":
-            return _transcribe(item_id, project_id, input_path, params)
-        elif ptype == "translate":
-            return _translate(item_id, project_id, params)
-        elif ptype == "tts":
-            return _tts(item_id, project_id, params)
-        elif ptype == "render":
-            return _render(item_id, project_id, input_path, params)
-        elif ptype == "ocr_hardsub":
-            return _ocr_hardsub(item_id, project_id, input_path, params)
-        elif ptype == "remove_hardsub":
-            return _remove_hardsub(item_id, project_id, input_path, params)
-        elif ptype == "export_audio":
-            return _export_audio(item_id, project_id, input_path, params)
-        elif ptype == "split":
-            return _split(item_id, project_id, input_path, params)
-        elif ptype == "process_music":
-            return _process_music(item_id, project_id, input_path, params)
-        elif ptype == "duck_music":
-            return _duck_music(item_id, project_id, input_path, params)
-        elif ptype == "ffmpeg_command":
-            return _ffmpeg_command(item_id, project_id, input_path, params)
-        elif ptype == "merge_videos":
-            return _merge_videos(item_id, project_id, params)
-        elif ptype == "tts_text":
-            return _tts_text(item_id, project_id, params)
-        elif ptype == "train_voice":
-            return _train_voice(item_id, project_id, params)
-        elif ptype == "publish":
-            return _publish(item_id, project_id, input_path, params)
-        elif ptype == "ai_recap":
-            return _ai_recap(item_id, project_id, input_path, params)
-        elif ptype == "ai_task":
-            return _ai_task(item_id, project_id, input_path, params)
-        elif ptype == "scene_detect":
-            return _scene_detect(item_id, project_id, input_path, params)
-        elif ptype == "extract_subtitle_stream":
-            return _extract_subtitle_stream(item_id, project_id, input_path, params)
-        elif ptype == "pipeline":
-            return _full(item_id, project_id, input_path, params)
-        else:
-            _log(item_id, "error", f"Unknown type: {ptype}")
-            _update(item_id, "failed", error=f"Unknown type: {ptype}")
+        ptype = queue_item["type"]
+        project_id = queue_item["project_id"]
+        input_path = queue_item["input_path"] or ""
+        params = json.loads(queue_item["params"]) if isinstance(queue_item["params"], str) else (queue_item["params"] or {})
+
+        _update(item_id, "running", 0)
+        job_log("info", f"[{ptype}] Pipeline started for project {project_id}")
+
+        try:
+            if ptype == "download":
+                return _download(item_id, project_id, params)
+            elif ptype == "transcribe":
+                return _transcribe(item_id, project_id, input_path, params)
+            elif ptype == "translate":
+                return _translate(item_id, project_id, params)
+            elif ptype == "tts":
+                return _tts(item_id, project_id, params)
+            elif ptype == "render":
+                return _render(item_id, project_id, input_path, params)
+            elif ptype == "ocr_hardsub":
+                return _ocr_hardsub(item_id, project_id, input_path, params)
+            elif ptype == "remove_hardsub":
+                return _remove_hardsub(item_id, project_id, input_path, params)
+            elif ptype == "export_audio":
+                return _export_audio(item_id, project_id, input_path, params)
+            elif ptype == "split":
+                return _split(item_id, project_id, input_path, params)
+            elif ptype == "process_music":
+                return _process_music(item_id, project_id, input_path, params)
+            elif ptype == "duck_music":
+                return _duck_music(item_id, project_id, input_path, params)
+            elif ptype == "ffmpeg_command":
+                return _ffmpeg_command(item_id, project_id, input_path, params)
+            elif ptype == "merge_videos":
+                return _merge_videos(item_id, project_id, params)
+            elif ptype == "tts_text":
+                return _tts_text(item_id, project_id, params)
+            elif ptype == "train_voice":
+                return _train_voice(item_id, project_id, params)
+            elif ptype == "publish":
+                return _publish(item_id, project_id, input_path, params)
+            elif ptype == "ai_recap":
+                return _ai_recap(item_id, project_id, input_path, params)
+            elif ptype == "ai_task":
+                return _ai_task(item_id, project_id, input_path, params)
+            elif ptype == "scene_detect":
+                return _scene_detect(item_id, project_id, input_path, params)
+            elif ptype == "extract_subtitle_stream":
+                return _extract_subtitle_stream(item_id, project_id, input_path, params)
+            elif ptype == "pipeline":
+                return _full(item_id, project_id, input_path, params)
+            else:
+                job_log("error", f"Unknown type: {ptype}")
+                _update(item_id, "failed", error=f"Unknown type: {ptype}")
+                return False
+        except Exception as e:
+            job_log("error", f"Pipeline failed: {e}")
+            _update(item_id, "failed", error=str(e))
             return False
-    except Exception as e:
-        _log(item_id, "error", f"Pipeline failed: {e}")
-        _update(item_id, "failed", error=str(e))
-        return False
+    finally:
+        set_current_job_id(None)
 
 
 # ─── Download Pipeline ───
@@ -459,7 +464,6 @@ def _full(item_id: int, project_id: int, input_path: str, params: dict) -> bool:
     # Step 3: Translate
     src = params.get("source_lang", "vi")
     tgt = params.get("target_lang", "vi")
-    _log(item_id, "info", f"Step 3 debug: params={json.dumps(params)}, src={src}, tgt={tgt}")
     if src != tgt:
         _log(item_id, "info", f"Step 3/5: Translating {src}→{tgt}...")
         _translate(item_id, project_id, params, finalize=False)
@@ -543,6 +547,10 @@ def _process_music(item_id: int, project_id: int, input_path: str, params: dict)
 def _duck_music(item_id: int, project_id: int, input_path: str, params: dict) -> bool:
     music_path = input_path or params.get("music_path", "")
     voice_path = params.get("voice_path", "")
+    if not voice_path and project_id:
+        candidate = VOICES_DIR / f"project_{project_id}_tts.wav"
+        if candidate.exists():
+            voice_path = str(candidate)
     if not music_path or not os.path.exists(music_path):
         raise FileNotFoundError(f"Music not found: {music_path}")
     if not voice_path or not os.path.exists(voice_path):
@@ -653,11 +661,11 @@ def _publish(item_id: int, project_id: int, input_path: str, params: dict) -> bo
     _update(item_id, "running", 10)
     from .publish_service import publish_youtube, publish_tiktok, publish_facebook
     if platform == "youtube":
-        result = publish_youtube(video_path, params.get("title", "My Video"), params.get("description", ""), params.get("privacy", "private"))
+        result = publish_youtube(video_path, params.get("title", "My Video"), params.get("description", ""), params.get("privacy", "private"), project_id=project_id)
     elif platform == "tiktok":
-        result = publish_tiktok(video_path, params.get("title", "My Video"), params.get("description", ""))
+        result = publish_tiktok(video_path, params.get("title", "My Video"), params.get("description", ""), project_id=project_id)
     elif platform == "facebook":
-        result = publish_facebook(video_path, params.get("title", "My Video"), params.get("description", ""))
+        result = publish_facebook(video_path, params.get("title", "My Video"), params.get("description", ""), project_id=project_id)
     else:
         raise ValueError(f"Unknown publish platform: {platform}")
     if not result.get("success"):
@@ -831,12 +839,8 @@ def _set_output_path(item_id: int, output_path: str):
 
 
 def _log(item_id: int, level: str, message: str):
-    try:
-        with db_cursor() as cur:
-            cur.execute("INSERT INTO job_logs (queue_item_id, level, message) VALUES (?,?,?)",
-                        (item_id, level, message))
-    except Exception:
-        pass
+    from .job_logger import job_log
+    job_log(level, message)
 
 
 def _extract_text_from_srt(srt_content: str) -> str:

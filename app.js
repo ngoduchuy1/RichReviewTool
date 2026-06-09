@@ -3,6 +3,23 @@
 /* ─── API Layer ─── */
 const API_BASE = window.location.origin + '/api';
 
+const UI = {
+  cache: new Map(),
+  id(id) {
+    if (!this.cache.has(id) || !document.body.contains(this.cache.get(id))) {
+      this.cache.set(id, document.getElementById(id));
+    }
+    return this.cache.get(id);
+  },
+  get videoPath() { return this.id('inp-video-path'); },
+  get srtPath() { return this.id('inp-srt-path'); },
+  get outputPath() { return this.id('inp-output-path'); },
+};
+
+function getInputMediaPath() {
+  return UI.videoPath?.value || UI.srtPath?.value || '';
+}
+
 /* ─── Toast notification system ─── */
 function showToast(message, type = 'error', duration = 4000) {
   try {
@@ -34,13 +51,14 @@ function showToast(message, type = 'error', duration = 4000) {
 }
 
 let latestQueueData = null;
-let queueListeners = [];
+const queueListeners = new Set();
 let currentProjectId = null;
 
 function onQueueChange(fn) {
-  queueListeners.push(fn);
+  if (typeof fn !== 'function') return () => {};
+  queueListeners.add(fn);
   return () => {
-    queueListeners = queueListeners.filter(listener => listener !== fn);
+    queueListeners.delete(fn);
   };
 }
 
@@ -132,7 +150,7 @@ class QueueSSEManager {
       try { this.eventSource.close(); } catch (_) { }
       this.eventSource = null;
     }
-    if (clearListeners) queueListeners = [];
+    if (clearListeners) queueListeners.clear();
   }
 }
 
@@ -200,7 +218,7 @@ async function apiPost(path, body) {
     delete body.model;
   }
   if ((path === '/ai/characters' || path === '/ai/speakers') && body && !body.video_path) {
-    body = { ...body, video_path: document.getElementById('inp-video-path')?.value || document.getElementById('inp-srt-path')?.value || '' };
+    body = { ...body, video_path: getInputMediaPath() };
   }
   if (path === '/ai/hashtags' && body && !body.text) {
     body = { ...body, text: document.getElementById('inp-ai-summary')?.value || '' };
@@ -758,9 +776,7 @@ document.querySelectorAll('.live-range').forEach(range => {
 
 /* ─── Load button (API) ─── */
 document.getElementById('btn-browse-video')?.addEventListener('click', async () => {
-  console.log('[Browse] btn-browse-video clicked');
   const res = await apiGet('/system/browse?type=file&ext=video');
-  console.log('[Browse] response:', res);
   if (res && res.path) {
     document.getElementById('inp-video-path').value = res.path;
     loadVideoPreview();
@@ -768,18 +784,14 @@ document.getElementById('btn-browse-video')?.addEventListener('click', async () 
 });
 
 document.getElementById('btn-browse-srt')?.addEventListener('click', async () => {
-  console.log('[Browse] btn-browse-srt clicked');
   const res = await apiGet('/system/browse?type=file&ext=srt');
-  console.log('[Browse] response:', res);
   if (res && res.path) {
     document.getElementById('inp-srt-path').value = res.path;
   }
 });
 
 document.getElementById('btn-browse-output')?.addEventListener('click', async () => {
-  console.log('[Browse] btn-browse-output clicked');
   const res = await apiGet('/system/browse?type=folder');
-  console.log('[Browse] response:', res);
   if (res && res.path) {
     document.getElementById('inp-output-path').value = res.path;
   }
@@ -799,7 +811,7 @@ document.getElementById('btn-load')?.addEventListener('click', async () => {
     // 1. Create project
     const project = await apiPost('/projects', {
       name: 'project_' + Date.now(),
-      preset: preset,
+      project_preset: preset,
     });
     if (!project) throw new Error('Không thể tạo dự án');
     currentProjectId = project.id;
@@ -843,7 +855,7 @@ const LANG_MAP_EXEC = { 'Tiếng Anh': 'en', 'Tiếng Trung': 'zh', 'Tiếng Nh�
 executeBtn.addEventListener('click', async () => {
   if (isRunning) return;
 
-  const inputPath = document.getElementById('inp-video-path')?.value || document.getElementById('inp-srt-path')?.value || '';
+  const inputPath = getInputMediaPath();
   if (!inputPath) {
     alert('Vui lòng chọn file video hoặc subtitle trước!');
     return;
@@ -861,6 +873,7 @@ executeBtn.addEventListener('click', async () => {
 
   const region = getSubBoxRegion();
   const exportParams = typeof getExportRenderParams === 'function' ? getExportRenderParams().params : {};
+  const subtitleStyle = getSubtitleStyleOptions();
   const params = {
     ...exportParams,
     source_lang: LANG_MAP_EXEC[selFrom] || 'en',
@@ -875,13 +888,10 @@ executeBtn.addEventListener('click', async () => {
     fpt_api_key: document.getElementById('inp-fpt-key')?.value || undefined,
     burn_subtitle: document.getElementById('chk-sub-burn')?.checked ?? true,
     output_name: inputName,
-    output_dir: document.getElementById('inp-output-path')?.value || undefined,
-    preset: document.getElementById('sel-project-preset')?.value || 'Movie Review',
+    output_dir: UI.outputPath?.value || undefined,
+    project_preset: document.getElementById('sel-project-preset')?.value || 'Movie Review',
     subtitle_region: region,
-    subtitle_font: 'Arial',
-    subtitle_size: 42,
-    subtitle_color: '#FFFFFF',
-    subtitle_shadow: 'soft',
+    ...subtitleStyle,
     remove_hardsub: subBlurEnabled,
   };
 
@@ -922,8 +932,7 @@ executeBtn.addEventListener('click', async () => {
   }
 
   function stopTracking() {
-    var idx = queueListeners.indexOf(onTrackUpdate);
-    if (idx !== -1) queueListeners.splice(idx, 1);
+    queueListeners.delete(onTrackUpdate);
   }
 
   onQueueChange(onTrackUpdate);
@@ -1364,7 +1373,7 @@ sidebarFlyout?.addEventListener('click', (e) => {
     const action = projectActionMap[leafLabel];
     if (action.fn === 'createProject') {
       const name = prompt('Tên dự án:', 'project_' + Date.now());
-      if (name) apiPost('/projects', { name, preset: document.getElementById('sel-project-preset')?.value || 'Movie Review' }).then(p => {
+      if (name) apiPost('/projects', { name, project_preset: document.getElementById('sel-project-preset')?.value || 'Movie Review' }).then(p => {
         if (p) { currentProjectId = p.id; alert(`Đã tạo dự án: ${name} (ID: ${p.id})`); }
       });
     } else if (action.fn === 'saveProject') {
@@ -1506,8 +1515,9 @@ function getExportRenderParams() {
     'NVENC Fast': { preset: 'fast', quality: 'fast', gpu: 'nvenc' },
     'Quality': { preset: 'slow', quality: 'quality', bitrate: 'auto', crf: '18' },
   }[presetName] || {};
-  const inputPath = document.getElementById('inp-video-path')?.value || document.getElementById('inp-srt-path')?.value || '';
+  const inputPath = getInputMediaPath();
   const inputName = inputPath.split(/[\\/]/).pop()?.replace(/\.[^.]+$/, '') || `project_${currentProjectId || 1}`;
+  const subtitleStyle = getSubtitleStyleOptions();
   return {
     inputPath,
     params: {
@@ -1523,17 +1533,25 @@ function getExportRenderParams() {
       height: speedPreset.height || undefined,
       copy_if_possible: true,
       output_name: inputName,
-      output_dir: document.getElementById('inp-output-path')?.value || undefined,
+      output_dir: UI.outputPath?.value || undefined,
       burn_subtitle: document.getElementById('chk-sub-burn')?.checked ?? true,
       subtitle_region: getSubBoxRegion() || undefined,
       remove_hardsub: subBlurEnabled,
-      subtitle_font: 'Arial',
-      subtitle_size: 42,
-      subtitle_color: '#FFFFFF',
-      subtitle_shadow: 'soft',
+      ...subtitleStyle,
       ...getVoiceModeOptions(),
       tts_enabled: false,
     },
+  };
+}
+
+function getSubtitleStyleOptions() {
+  return {
+    subtitle_font: UI.id('sel-sub-font')?.value || 'Arial',
+    subtitle_size: Number(UI.id('inp-sub-size')?.value || 42),
+    subtitle_color: UI.id('inp-sub-color')?.value || '#ffffff',
+    subtitle_shadow: (UI.id('sel-sub-shadow')?.value || 'Soft').toLowerCase(),
+    subtitle_stroke: Number(UI.id('inp-sub-stroke')?.value || 2),
+    subtitle_position: (UI.id('sel-sub-position')?.value || 'Bottom').toLowerCase(),
   };
 }
 
@@ -1749,7 +1767,7 @@ document.getElementById('btn-music-apply')?.addEventListener('click', async () =
   const fIn = document.getElementById('chk-music-fade-in')?.checked ? 2 : 0;
   const fOut = document.getElementById('chk-music-fade-out')?.checked ? 2 : 0;
   const norm = document.getElementById('chk-music-normalize')?.checked || false;
-  const inp = document.getElementById('inp-video-path')?.value || document.getElementById('inp-srt-path')?.value || '';
+  const inp = getInputMediaPath();
   const qs = `input_path=${encodeURIComponent(inp)}&volume=${mVol}&fade_in=${fIn}&fade_out=${fOut}&normalize=${norm}`;
   await apiPost('/music/process?' + qs);
   addTaskRow();
@@ -1758,8 +1776,8 @@ document.getElementById('btn-music-apply')?.addEventListener('click', async () =
 document.getElementById('chk-music-duck')?.addEventListener('change', async function () {
   if (this.checked) {
     await apiPost('/music/duck', {
-      music_path: document.getElementById('inp-video-path')?.value || document.getElementById('inp-srt-path')?.value || '',
-      voice_path: '',
+      project_id: currentProjectId || 1,
+      music_path: getInputMediaPath(),
     });
     addTaskRow();
   }
@@ -1775,13 +1793,23 @@ document.getElementById('btn-enhance-apply')?.addEventListener('click', async ()
   const lut = document.getElementById('sel-enhance-lut')?.value;
   const r = await apiPost('/enhance/apply', {
     project_id: currentProjectId || 1,
-    video_path: document.getElementById('inp-video-path')?.value || document.getElementById('inp-srt-path')?.value || '',
+    video_path: getInputMediaPath(),
     lut: lut === 'None' ? null : lut,
     brightness: parseInt(document.getElementById('slider-enhance-brightness')?.value || '50'),
     contrast: parseInt(document.getElementById('slider-enhance-contrast')?.value || '55'),
     saturation: parseInt(document.getElementById('slider-enhance-saturation')?.value || '60'),
     temperature: parseInt(document.getElementById('slider-enhance-temperature')?.value || '48'),
     vignette: parseInt(document.getElementById('slider-enhance-vignette')?.value || '12'),
+    film_look: document.getElementById('sel-enhance-film-look')?.value || 'Review phim',
+    watermark: document.getElementById('chk-enhance-watermark')?.checked || false,
+    transition: document.getElementById('chk-enhance-transition')?.checked || false,
+    motion_blur: document.getElementById('chk-enhance-motion')?.checked || false,
+    zoom: document.getElementById('chk-enhance-zoom')?.checked || false,
+    shake: document.getElementById('chk-enhance-shake')?.checked || false,
+    particles: document.getElementById('chk-enhance-particles')?.checked || false,
+    speed_ramp: document.getElementById('chk-enhance-speed')?.checked || false,
+    slow_motion: document.getElementById('chk-enhance-slow')?.checked || false,
+    fast_motion: document.getElementById('chk-enhance-fast')?.checked || false,
   });
   if (r) addTaskRow();
 });
@@ -1790,7 +1818,7 @@ document.getElementById('btn-enhance-apply')?.addEventListener('click', async ()
 document.getElementById('btn-edit-rotate')?.addEventListener('click', async () => {
   const angle = document.querySelector('#tab-edit .text-input.num')?.value || '90';
   await apiPost('/edit/crop', {
-    video_path: document.getElementById('inp-video-path')?.value || document.getElementById('inp-srt-path')?.value || '',
+    video_path: getInputMediaPath(),
     operations: [{ type: 'rotate', angle: parseFloat(angle) }],
   });
   addTaskRow();
@@ -1798,7 +1826,7 @@ document.getElementById('btn-edit-rotate')?.addEventListener('click', async () =
 
 document.getElementById('btn-edit-flip')?.addEventListener('click', async () => {
   await apiPost('/edit/crop', {
-    video_path: document.getElementById('inp-video-path')?.value || document.getElementById('inp-srt-path')?.value || '',
+    video_path: getInputMediaPath(),
     operations: [{ type: 'hflip' }],
   });
   addTaskRow();
@@ -1930,7 +1958,7 @@ document.getElementById('btn-sub-transcribe')?.addEventListener('click', async (
     if (!currentProjectId) {
       const project = await apiPost('/projects', {
         name: 'project_' + Date.now(),
-        preset: document.getElementById('sel-project-preset')?.value || 'Movie Review',
+        project_preset: document.getElementById('sel-project-preset')?.value || 'Movie Review',
       });
       if (project) {
         currentProjectId = project.id;
@@ -2240,7 +2268,16 @@ document.getElementById('btn-sub-export-srt')?.addEventListener('click', async (
 });
 
 document.getElementById('btn-sub-export-ass')?.addEventListener('click', async () => {
-  const r = await apiPost('/subtitle/export?project_id=' + (currentProjectId || 1) + '&fmt=ass');
+  const style = getSubtitleStyleOptions();
+  const query = new URLSearchParams({
+    project_id: String(currentProjectId || 1),
+    fmt: 'ass',
+    font: style.subtitle_font,
+    size: String(style.subtitle_size),
+    color: style.subtitle_color,
+    shadow: style.subtitle_shadow,
+  });
+  const r = await apiPost('/subtitle/export?' + query.toString());
   if (r) addTaskRow();
 });
 
@@ -2257,6 +2294,7 @@ document.getElementById('btn-sub-export-burn')?.addEventListener('click', async 
       burn_subtitle: true,
       subtitle_region: getSubBoxRegion() || undefined,
       remove_hardsub: subBlurEnabled,
+      ...getSubtitleStyleOptions(),
       tts_enabled: false,
     },
   });
@@ -2648,7 +2686,7 @@ document.getElementById('btn-publish-confirm')?.addEventListener('click', async 
   const desc = document.getElementById('inp-publish-desc')?.value || '';
   const videoPath = document.getElementById('inp-video-path')?.value || document.getElementById('inp-srt-path')?.value || '';
   if (!videoPath) { alert('No video selected'); return; }
-  const result = await apiPost(`/publish/${publishPlatform}`, { video_path: videoPath, title, description: desc });
+  const result = await apiPost(`/publish/${publishPlatform}`, { project_id: currentProjectId || 1, video_path: videoPath, title, description: desc });
   if (result) {
     addTaskRow();
     document.getElementById('publish-inputs').style.display = 'none';
@@ -2736,7 +2774,7 @@ document.getElementById('btn-save-template')?.addEventListener('click', async ()
   if (!name) return;
   const config = {
     name,
-    preset: document.getElementById('sel-project-preset')?.value || 'Movie Review',
+    project_preset: document.getElementById('sel-project-preset')?.value || 'Movie Review',
     voice: { provider: document.getElementById('sel-tts-provider')?.value?.toLowerCase() || 'edge' },
     subtitle: { font: 'Arial', size: 42, color: '#FFFFFF', burn: true },
     export: {
@@ -3011,17 +3049,7 @@ document.querySelectorAll('.info-btn').forEach(btn => {
   }
 });
 
-/* ═══════════════ VOICE PLAY BUTTON ═══════════════ */
-document.getElementById('btn-play-voice')?.addEventListener('click', async () => {
-  const text = 'Xin chào, đây là giọng đọc thử nghiệm';
-  const provider = document.getElementById('sel-tts-provider')?.value === 'FPT.AI TTS' ? 'fpt' : (document.getElementById('sel-tts-provider')?.value?.toLowerCase().replace(' tts', '').replace(' (free)', '') || 'edge');
-  const voice = document.getElementById('sel-voice-type')?.value || 'vi-VN-HoaiMyNeural';
-  const fptKey = document.getElementById('inp-fpt-key')?.value || '';
-  const audio = new Audio(`/api/voice/play?text=${encodeURIComponent(text)}&provider=${provider}&voice=${voice}&fpt_api_key=${encodeURIComponent(fptKey)}`);
-  audio.play().catch(() => alert('Nghe thử giọng nói: ' + text));
-});
-
-/* Voice preview WAV player: capture handler overrides the legacy JSON-as-audio handler above. */
+/* Voice preview WAV player. */
 (function attachVoicePreviewPlayer() {
   const btn = document.getElementById('btn-play-voice');
   if (!btn || btn.dataset.previewPlayerAttached === '1') return;
@@ -3059,8 +3087,8 @@ document.getElementById('btn-play-voice')?.addEventListener('click', async () =>
     btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i>';
     try {
       const result = await apiGet(`/voice/play?text=${encodeURIComponent(text)}&provider=${encodeURIComponent(providerId())}&voice=${encodeURIComponent(voice)}&fpt_api_key=${encodeURIComponent(fptKey)}&project_id=${currentProjectId || 0}`);
-      if (!result?.id) throw new Error('Backend khong tao duoc job nghe thu');
-      const outputPath = await waitForOutput(result.id, result.output);
+      const outputPath = result?.ready ? result.output : await waitForOutput(result.id, result.output);
+      if (!outputPath) throw new Error('Backend khong tao duoc file nghe thu');
       const src = `/api/video/serve?path=${encodeURIComponent(outputPath)}&t=${Date.now()}`;
       if (audioEl) {
         audioEl.src = src;
@@ -3655,14 +3683,18 @@ async function initQueueTable() {
   renderQueueRows([]);
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+let queueTableInitialized = false;
+function initQueueTableOnce() {
+  if (queueTableInitialized) return;
+  queueTableInitialized = true;
   initQueueTable();
   onQueueChange(sseQueueRefresh);
-});
+}
+
+document.addEventListener('DOMContentLoaded', initQueueTableOnce);
 
 if (document.readyState === 'complete' || document.readyState === 'interactive') {
-  initQueueTable();
-  onQueueChange(sseQueueRefresh);
+  initQueueTableOnce();
 }
 
 function sseQueueRefresh(jobs) {
@@ -3752,7 +3784,7 @@ function updateVoiceDropdown() {
 
   if (provider === 'CapCut TTS') {
     const capcutVoices = [
-      { value: 'BV074_streaming_dsp|7550087831092251920|sami', text: 'CapCut BV074' }
+      { value: 'BV074_streaming_dsp|7550087831092251920|sami', text: 'Cô gái hoạt ngôn (CapCut)' }
     ];
     typeSel.innerHTML = '';
     capcutVoices.forEach(v => {
@@ -3972,7 +4004,7 @@ function runSidebarAction(action) {
 function createProjectFromSidebar() {
   const name = prompt('Ten du an:', 'project_' + Date.now());
   if (!name) return;
-  apiPost('/projects', { name, preset: document.getElementById('sel-project-preset')?.value || 'Movie Review' }).then(p => {
+  apiPost('/projects', { name, project_preset: document.getElementById('sel-project-preset')?.value || 'Movie Review' }).then(p => {
     if (p) {
       currentProjectId = p.id;
       showToast('Da tao du an: ' + name, 'success');
@@ -4494,7 +4526,6 @@ updateWorkspaceMetadata();
     toast(event.target.checked ? 'Giu ty le khung hinh' : 'Cho phep doi ty le tu do');
   });
 
-  const originalRenderQueueRows = window.renderQueueRows;
   const refreshQueueHealth = () => {
     const health = document.getElementById('queue-health-text');
     if (!health) return;
