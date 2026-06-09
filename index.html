@@ -23,7 +23,6 @@
         <button class="topbar-command" id="btn-command-palette" title="Command palette"><i class="ri-command-line"></i><span>Ctrl K</span></button>
       </div>
       <div class="topbar-right">
-        <span class="version-badge" id="btn-version-history" title="Lịch sử phiên bản">V2</span>
         <label class="toggle-switch">
           <input type="checkbox" id="toggle-mode" />
           <span class="slider"></span>
@@ -60,7 +59,7 @@
         <div class="asset-title"><i class="ri-archive-stack-line"></i><span>Tài nguyên</span></div>
         <div class="asset-search">
           <i class="ri-search-line"></i>
-          <input type="text" id="asset-filter" placeholder="Lá»c asset" />
+          <input type="text" id="asset-filter" placeholder="Lọc asset" />
         </div>
         <button class="asset-item active"><i class="ri-film-line"></i><span>Video</span><span class="asset-count">12</span></button>
         <button class="asset-item"><i class="ri-music-2-line"></i><span>Nhạc nền</span><span class="asset-count">8</span></button>
@@ -369,14 +368,14 @@
                     <label class="feature-item custom-checkbox" style="margin-top:8px">
                       <input type="checkbox" id="chk-vocal-sep" />
                       <span class="chk-box"></span>
-                      <span class="field-label">Tach vocal bang Demucs khi audio co nhac nen nang</span>
+                      <span class="field-label">Tách vocal bằng Demucs khi audio có nhạc nền nặng</span>
                     </label>
                     <div class="feat-row" style="margin-top: 10px;">
                       <button class="action-btn" id="btn-sub-transcribe" style="background: var(--accent); color: white; border: none; padding: 6px 15px;">
                         <i class="ri-mic-line"></i> Nhận diện ngay
                       </button>
                       <button class="action-btn" id="btn-sub-ocr" style="background:#805ad5;color:white;border:none;padding:6px 15px;margin-left:8px">
-                        <i class="ri-scan-2-line"></i> RapidOCR sub cung
+                        <i class="ri-scan-2-line"></i> RapidOCR sub cứng
                       </button>
                     </div>
                   </div>
@@ -734,13 +733,13 @@
         <section id="task-queue-section" class="panel">
           <div class="queue-toolbar">
             <div>
-              <span class="section-label inline-label">HÃ ng chá» render</span>
-              <small id="queue-health-text">ChÆ°a cÃ³ task Ä‘ang cháº¡y</small>
+              <span class="section-label inline-label">Hàng chờ render</span>
+              <small id="queue-health-text">Chưa có task đang chạy</small>
             </div>
             <div class="queue-stats">
-              <span><strong id="queue-running-total">0</strong> cháº¡y</span>
+              <span><strong id="queue-running-total">0</strong> chạy</span>
               <span><strong id="queue-completed-total">0</strong> xong</span>
-              <span><strong id="queue-failed-total">0</strong> lá»—i</span>
+              <span><strong id="queue-failed-total">0</strong> lỗi</span>
             </div>
           </div>
           <div id="batch-manager">
